@@ -1,0 +1,8 @@
+title = "chai-connect"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Example env file and planning docs contain names, not values"
+paths = ['''\.env\.example$''', '''docs/planning-conversation\.md$''']

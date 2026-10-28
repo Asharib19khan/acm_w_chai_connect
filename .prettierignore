@@ -1,0 +1,8 @@
+pnpm-lock.yaml
+.next
+.turbo
+coverage
+playwright-report
+test-results
+docs/planning-conversation.md
+supabase/.temp

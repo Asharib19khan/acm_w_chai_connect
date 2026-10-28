@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+  - workers/*
+  - tools/*
+
+onlyBuiltDependencies:
+  - supabase
+  - sharp
+  - '@tailwindcss/oxide'
+
+ignoredBuiltDependencies:
+  - unrs-resolver

@@ -1,0 +1,29 @@
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# env files: never commit secrets
+.env
+.env.*
+!.env.example
+
+# test output
+playwright-report/
+test-results/
+blob-report/
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.vercel

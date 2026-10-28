@@ -1,0 +1,10 @@
+# Ye must approve changes to the sensitive parts (blueprint section 14).
+# TODO: replace GITHUB_USERNAME with Ye's GitHub username once the repo exists.
+/supabase/              @GITHUB_USERNAME
+/packages/db/           @GITHUB_USERNAME
+/packages/ai/           @GITHUB_USERNAME
+/tools/moderator/       @GITHUB_USERNAME
+/workers/upload-relay/  @GITHUB_USERNAME
+/apps/*/src/proxy.ts    @GITHUB_USERNAME
+/apps/control/src/lib/auth/ @GITHUB_USERNAME
+/.github/               @GITHUB_USERNAME

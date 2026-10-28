@@ -1,0 +1,13 @@
+/*
+ * Chai Connect palette: the only place raw hex values may appear.
+ * Roles (blueprint section 2): Ink = canvas, Prussian = surfaces, Grape = borders only,
+ * Plum = actions/links/focus, Petal = text on dark.
+ */
+:root {
+  --cc-ink: #011c27;
+  --cc-prussian: #03254e;
+  --cc-grape: #545677;
+  --cc-plum: #eb9fef;
+  --cc-petal: #fecee9;
+  --cc-petal-72: rgb(254 206 233 / 0.72);
+}
