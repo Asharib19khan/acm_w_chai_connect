@@ -76,6 +76,16 @@ Never propose an upgrade as a fix; find a free workaround.
 - Layout adds `workers/upload-relay` (Cloudflare Worker) and `tools/moderator` (laptop worker).
 - `docs/planning-conversation.md` keeps the full planning conversation for reference.
 
+### A5. Local data store until Supabase is connected (added 28 Oct)
+
+- The three portals were built before any account existed. `packages/db` runs on a local JSON
+  store (`.data/dev-db.json`, gitignored) shared by both apps; CVs and photos are written to
+  `.data/files/` as the stand-in for Google Drive. Every screen calls the repo functions in
+  `packages/db/src/repo/*`, so P2 re-implements those functions on Supabase and nothing above changes.
+- Admin sign-in (TOTP, lockouts, sessions, audit) already works for real on this store.
+- Not wired yet: Upstash (an in-memory limiter stands in), Turnstile, the Claude worker (free rule
+  checks flag everything today), the Cloudflare relay and Drive (P4, P9), Realtime (screens poll).
+
 ## 1. Overview
 
 Two Next.js apps, one Supabase database and five games ship for Chai Connect on Nov 25, 2026. Websites are done by Nov 10, games by Nov 18, then a feature freeze, security testing and a full rehearsal. Ye builds with Claude Code; the 4 co-heads and their members take scoped tasks (section 17).

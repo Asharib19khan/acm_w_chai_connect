@@ -22,6 +22,21 @@ Environment variables are optional locally. Copy `.env.example` to `apps/web/.en
 `apps/control/.env.local` as each service gets set up. Never commit those files. On Vercel, production
 and preview builds fail if any variable is missing or a secret carries a `NEXT_PUBLIC_` prefix.
 
+## Local data (until Supabase is connected)
+
+Both apps share a local store in `.data/` (never committed). Typical first run:
+
+```sh
+pnpm bootstrap:superadmin   # creates the superadmin; scan the QR with Microsoft Authenticator
+pnpm seed:demo              # optional: synthetic questions, CVs, registrations and a quiz
+pnpm dev
+```
+
+- Student site: http://localhost:3000
+- Auditorium display: http://localhost:3001 (press Ctrl+Shift+1+9 to sign in)
+- Admin portal: http://localhost:3001/admin · Registrations: http://localhost:3001/registrations
+- `pnpm data:reset` wipes everything (run `bootstrap:superadmin` again afterwards).
+
 ## Checks
 
 ```sh

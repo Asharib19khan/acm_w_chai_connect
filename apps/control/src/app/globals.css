@@ -2,20 +2,42 @@
 @import '@chai/ui/tokens.css';
 @source '../../../../packages/ui/src';
 
-html {
-  background: var(--cc-ink);
-  color: var(--cc-petal);
-  color-scheme: dark;
+/*
+ * The stage scales from a 1920×1080 base: 1em = 16px at 1920 wide, so every size inside the
+ * display is set in em and stays readable from the back row on any projector.
+ */
+.cc-stage {
+  font-size: clamp(10px, 0.8333vw, 40px);
 }
 
-body {
-  min-height: 100dvh;
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+.cc-stage[data-projector='true'] {
+  --cc-ink: #03254e;
+  --cc-ink-2: #0a2f5c;
+  --cc-prussian: #0d3a70;
+  --cc-petal-72: rgb(254 206 233 / 0.88);
 }
 
-:focus-visible {
-  outline: 2px solid var(--cc-plum);
-  outline-offset: 2px;
+.cc-night {
+  background:
+    radial-gradient(70em 50em at 100% 0%, rgb(3 37 78 / 0.95), transparent 60%),
+    radial-gradient(50em 40em at 0% 100%, rgb(235 159 239 / 0.08), transparent 70%), var(--cc-ink);
+}
+
+@keyframes cc-scroll-up {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+.cc-scroll-up {
+  animation: cc-scroll-up var(--cc-scroll-duration, 60s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-scroll-up {
+    animation: none;
+  }
 }

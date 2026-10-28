@@ -5,7 +5,7 @@ import './src/env';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ['@chai/core', '@chai/db', '@chai/ui'],
+  transpilePackages: ['@chai/core', '@chai/db', '@chai/ui', '@chai/ai'],
 };
 
 export default nextConfig;

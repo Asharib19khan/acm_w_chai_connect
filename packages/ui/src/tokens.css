@@ -1,13 +1,169 @@
 /*
- * Chai Connect palette: the only place raw hex values may appear.
+ * Chai Connect design tokens: the only place raw hex values may appear.
  * Roles (blueprint section 2): Ink = canvas, Prussian = surfaces, Grape = borders only,
- * Plum = actions/links/focus, Petal = text on dark.
+ * Plum = actions/links/focus, Petal = text on dark. Mint/Coral exist only for moderation flags.
  */
 :root {
   --cc-ink: #011c27;
+  --cc-ink-2: #021f30;
   --cc-prussian: #03254e;
+  --cc-prussian-2: #0a2f5c;
   --cc-grape: #545677;
   --cc-plum: #eb9fef;
+  --cc-plum-deep: #d77fdc;
   --cc-petal: #fecee9;
   --cc-petal-72: rgb(254 206 233 / 0.72);
+  /* Faintest text tone: 0.64 keeps 4.5:1 even on Prussian surfaces. */
+  --cc-petal-50: rgb(254 206 233 / 0.64);
+  --cc-petal-12: rgb(254 206 233 / 0.12);
+  --cc-petal-06: rgb(254 206 233 / 0.06);
+  --cc-plum-16: rgb(235 159 239 / 0.16);
+  --cc-mint: #7be0b5;
+  --cc-coral: #ff9a8f;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+@theme inline {
+  --color-ink: var(--cc-ink);
+  --color-ink-2: var(--cc-ink-2);
+  --color-prussian: var(--cc-prussian);
+  --color-prussian-2: var(--cc-prussian-2);
+  --color-grape: var(--cc-grape);
+  --color-plum: var(--cc-plum);
+  --color-plum-deep: var(--cc-plum-deep);
+  --color-petal: var(--cc-petal);
+  --color-petal-72: var(--cc-petal-72);
+  --color-petal-50: var(--cc-petal-50);
+  --color-petal-12: var(--cc-petal-12);
+  --color-petal-06: var(--cc-petal-06);
+  --color-plum-16: var(--cc-plum-16);
+  --color-mint: var(--cc-mint);
+  --color-coral: var(--cc-coral);
+  --font-display: var(--font-unbounded), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --ease-out-expo: var(--ease-out);
+  --animate-marquee: cc-marquee var(--cc-marquee-duration, 30s) linear infinite;
+}
+
+@keyframes cc-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes cc-steam {
+  0% {
+    transform: translate3d(0, 6px, 0) scaleY(0.9);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--drift, 4px), -26px, 0) scaleY(1.15);
+    opacity: 0;
+  }
+}
+
+@keyframes cc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes cc-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+html {
+  background: var(--cc-ink);
+  color: var(--cc-petal);
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--cc-grape) transparent;
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  background: var(--cc-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  caret-color: var(--cc-plum);
+}
+
+::selection {
+  background: var(--cc-plum);
+  color: var(--cc-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--cc-plum);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cc-grape);
+  border-radius: 999px;
+  border: 3px solid var(--cc-ink);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--cc-petal-06) 0%,
+    var(--cc-petal-12) 50%,
+    var(--cc-petal-06) 100%
+  );
+  background-size: 200% 100%;
+  animation: cc-shimmer 1.4s linear infinite;
+}
+
+.cc-live-dot {
+  animation: cc-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-skeleton,
+  .cc-live-dot {
+    animation: none;
+  }
+  [data-marquee-track] {
+    animation-duration: calc(var(--cc-marquee-duration, 30s) * 4) !important;
+  }
+  [data-steam] {
+    animation: none !important;
+    opacity: 0.5;
+  }
 }

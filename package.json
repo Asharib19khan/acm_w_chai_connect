@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
+    "build": "turbo run build --concurrency=1",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "test": "vitest run",
@@ -17,19 +17,30 @@
     "e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "bootstrap:superadmin": "tsx --conditions=react-server scripts/bootstrap-superadmin.ts",
+    "seed:demo": "tsx --conditions=react-server scripts/seed-demo.ts",
+    "data:reset": "tsx --conditions=react-server scripts/reset-data.ts",
+    "dev:code": "tsx --conditions=react-server scripts/dev-code.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "@types/node": "24.19.2",
+    "@types/qrcode": "1.5.6",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.3",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",
+    "qrcode": "1.5.4",
     "supabase": "2.122.0",
+    "tsx": "4.23.15",
     "turbo": "2.11.10",
     "typescript": "5.9.3",
     "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@chai/core": "workspace:*",
+    "@chai/db": "workspace:*"
   }
 }

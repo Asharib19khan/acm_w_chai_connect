@@ -10,6 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "server-only": "0.0.1"
+    "@chai/ai": "workspace:*",
+    "@chai/core": "workspace:*",
+    "server-only": "0.0.1",
+    "unpdf": "1.9.1"
   }
 }

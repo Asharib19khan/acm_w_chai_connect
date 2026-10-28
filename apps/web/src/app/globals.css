@@ -2,20 +2,33 @@
 @import '@chai/ui/tokens.css';
 @source '../../../../packages/ui/src';
 
-html {
-  background: var(--cc-ink);
-  color: var(--cc-petal);
-  color-scheme: dark;
+/* Night-market glow behind the page: two soft pools of Plum and Prussian light. */
+.cc-night {
+  background:
+    radial-gradient(60rem 40rem at 110% -10%, rgb(3 37 78 / 0.9), transparent 60%),
+    radial-gradient(40rem 30rem at -20% 30%, rgb(235 159 239 / 0.07), transparent 70%),
+    var(--cc-ink);
 }
 
-body {
-  min-height: 100dvh;
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+.cc-grain::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-:focus-visible {
-  outline: 2px solid var(--cc-plum);
-  outline-offset: 2px;
+/* Quiz screens: no text selection, no long-press callouts (blueprint section 11). */
+.cc-locked {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@media print {
+  .cc-locked {
+    display: none !important;
+  }
 }

@@ -44,6 +44,7 @@ export default defineConfig([
       '**/*.config.{ts,mjs,js}',
       'packages/core/src/env-check.ts',
       'e2e/**',
+      '**/*.test.ts',
       'scripts/**',
       'tools/**',
     ],

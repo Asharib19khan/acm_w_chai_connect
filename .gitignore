@@ -27,3 +27,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .vercel
+
+# local dev data store (stand-in for Supabase/Drive)
+.data/

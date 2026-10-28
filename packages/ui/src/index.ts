@@ -1,4 +1,3 @@
-// Components arrive in phase P1 (design system).
 export const BRAND = {
   name: 'Chai Connect',
   org: 'ACM-W',
@@ -13,3 +12,15 @@ export const PALETTE = {
   plum: '#eb9fef',
   petal: '#fecee9',
 } as const;
+
+export { cn } from './cn';
+export { AnimatedNumber } from './animated-number';
+export { Button, ButtonLink, buttonClass, Spinner } from './button';
+export { ChaiCup, Wordmark } from './chai-cup';
+export { CodeInput } from './code-input';
+export { Checkbox, ChoiceChip, Field, Input, Select, Switch, Textarea } from './fields';
+export { Marquee, Star } from './marquee';
+export { Drawer, Modal } from './overlay';
+export { QrCode } from './qr';
+export { EmptyState, ErrorState, LiveDot, Skeleton } from './states';
+export { ToastProvider, useToast } from './toast';
