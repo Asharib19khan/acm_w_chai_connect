@@ -114,14 +114,14 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
 
   return (
     <div
-      className="cc-stage text-petal flex h-dvh flex-col overflow-hidden"
+      className="cc-stage text-fg flex h-dvh flex-col overflow-hidden"
       data-projector={data.projectorMode}
     >
       <h1 className="sr-only">Chai Connect</h1>
       <Marquee
         items={top}
         speed={70}
-        className="bg-plum font-display text-ink h-[3.4em] shrink-0 text-[1.45em] font-bold tracking-[0.06em]"
+        className="bg-accent font-display text-fg h-[3.4em] shrink-0 text-[1.45em] font-bold tracking-[0.06em]"
         separator={<Star className="size-[0.6em]" />}
       />
       <header className="flex shrink-0 items-center justify-between px-[3em] py-[1.4em]">
@@ -151,7 +151,7 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
           <Clock />
           {stale && presenter && (
             <span
-              className="bg-coral size-[0.6em] rounded-full"
+              className="bg-danger-soft size-[0.6em] rounded-full"
               title="Reconnecting"
               aria-label="Reconnecting"
             />
@@ -169,11 +169,11 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
                 layoutId={reduce ? undefined : `card-${card.id}`}
                 onClick={() => setOpen(card.id)}
                 className={cn(
-                  'group hover:ring-plum relative flex flex-col overflow-hidden rounded-[2em] p-[2em] text-left ring-1 transition-[box-shadow] duration-300',
+                  'group hover:ring-accent-strong relative flex flex-col overflow-hidden rounded-[2em] p-[2em] text-left ring-1 transition-[box-shadow] duration-300',
                   card.tile,
                   card.id === 'quiz' && data.quiz.phase !== 'locked'
-                    ? 'bg-plum text-ink ring-plum'
-                    : 'bg-prussian ring-grape',
+                    ? 'bg-accent text-fg ring-accent-strong'
+                    : 'bg-surface ring-edge',
                 )}
                 style={{ visibility: open === card.id ? 'hidden' : 'visible' }}
               >
@@ -201,8 +201,8 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
                 className={cn(
                   'absolute inset-x-[3em] top-0 bottom-[1.6em] z-10 flex flex-col overflow-hidden rounded-[2em] p-[2.6em] ring-1',
                   open === 'quiz' && data.quiz.phase !== 'locked' && data.quiz.phase !== 'ended'
-                    ? 'bg-plum text-ink ring-plum'
-                    : 'bg-prussian ring-grape',
+                    ? 'bg-accent text-fg ring-accent-strong'
+                    : 'bg-surface ring-edge',
                 )}
                 aria-label={CARDS.find((c) => c.id === open)?.title}
               >
@@ -246,17 +246,17 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="bg-ink/95 absolute inset-0 z-20 grid place-items-center px-[8em]"
+              className="bg-canvas/95 absolute inset-0 z-20 grid place-items-center px-[8em]"
             >
               <motion.figure
                 initial={{ y: 40, filter: 'blur(12px)' }}
                 animate={{ y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               >
-                <blockquote className="font-display text-petal text-[4.6em] leading-[1.08] font-bold tracking-tight text-balance">
+                <blockquote className="font-display text-fg text-[4.6em] leading-[1.08] font-bold tracking-tight text-balance">
                   “{spotlight.body}”
                 </blockquote>
-                <figcaption className="text-plum mt-[1em] text-[2em]">
+                <figcaption className="text-accent-strong mt-[1em] text-[2em]">
                   — {spotlight.name ?? 'Anonymous'}
                 </figcaption>
               </motion.figure>
@@ -269,8 +269,8 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
         items={top}
         speed={55}
         reverse
-        className="bg-prussian font-display text-petal h-[3em] shrink-0 text-[1.2em] font-semibold tracking-[0.06em]"
-        separator={<Star className="text-plum size-[0.6em]" />}
+        className="bg-surface font-display text-fg h-[3em] shrink-0 text-[1.2em] font-semibold tracking-[0.06em]"
+        separator={<Star className="text-accent-strong size-[0.6em]" />}
       />
 
       {presenter && (
@@ -294,7 +294,7 @@ export function Display({ initial, presenter, quizzes, studentUrl }: Props) {
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="bg-prussian ring-grape flex items-center gap-[0.5em] rounded-full px-[1em] py-[0.4em] text-[1.1em] font-semibold ring-1">
+    <span className="bg-surface ring-edge flex items-center gap-[0.5em] rounded-full px-[1em] py-[0.4em] text-[1.1em] font-semibold ring-1">
       {children}
     </span>
   );

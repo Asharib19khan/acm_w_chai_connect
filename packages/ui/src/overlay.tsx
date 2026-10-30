@@ -72,7 +72,7 @@ export function Modal({ open, onClose, title, description, children, className }
           transition={{ duration: 0.2 }}
         >
           <div
-            className="bg-ink/80 absolute inset-0 backdrop-blur-md"
+            className="bg-ink/35 absolute inset-0 backdrop-blur-sm"
             onClick={onClose}
             aria-hidden
           />
@@ -86,12 +86,12 @@ export function Modal({ open, onClose, title, description, children, className }
             exit={{ opacity: 0, scale: 0.97, y: 6, filter: 'blur(4px)' }}
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             className={cn(
-              'bg-prussian ring-grape relative w-full max-w-md rounded-[28px] p-6 shadow-[0_30px_80px_-30px_rgb(0_0_0_/_0.8)] ring-1 sm:p-8',
+              'bg-surface ring-edge relative w-full max-w-md rounded-[28px] p-6 shadow-[0_30px_80px_-30px_var(--cc-shadow)] ring-1 sm:p-8',
               className,
             )}
           >
-            <h2 className="font-display text-petal text-xl font-semibold">{title}</h2>
-            {description && <p className="text-petal-72 mt-2 text-sm">{description}</p>}
+            <h2 className="font-display text-fg text-xl font-semibold">{title}</h2>
+            {description && <p className="text-fg-muted mt-2 text-sm">{description}</p>}
             <div className="mt-6">{children}</div>
           </motion.div>
         </motion.div>
@@ -115,7 +115,7 @@ export function Drawer({ open, onClose, title, description, children, className 
           exit={{ opacity: 0 }}
         >
           <div
-            className="bg-ink/70 absolute inset-0 backdrop-blur-sm"
+            className="bg-ink/30 absolute inset-0 backdrop-blur-[2px]"
             onClick={onClose}
             aria-hidden
           />
@@ -129,20 +129,20 @@ export function Drawer({ open, onClose, title, description, children, className 
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 36 }}
             className={cn(
-              'bg-prussian ring-grape absolute top-0 right-0 flex h-full w-full max-w-lg flex-col overflow-y-auto shadow-[-30px_0_80px_-30px_rgb(0_0_0_/_0.8)] ring-1',
+              'bg-surface ring-edge absolute top-0 right-0 flex h-full w-full max-w-lg flex-col overflow-y-auto shadow-[-30px_0_80px_-30px_var(--cc-shadow)] ring-1',
               className,
             )}
           >
-            <header className="bg-prussian/95 sticky top-0 z-10 flex items-start justify-between gap-4 px-6 pt-6 pb-4 backdrop-blur">
+            <header className="bg-surface/95 sticky top-0 z-10 flex items-start justify-between gap-4 px-6 pt-6 pb-4 backdrop-blur">
               <div>
-                <h2 className="font-display text-petal text-xl font-semibold">{title}</h2>
-                {description && <div className="text-petal-72 mt-1 text-sm">{description}</div>}
+                <h2 className="font-display text-fg text-xl font-semibold">{title}</h2>
+                {description && <div className="text-fg-muted mt-1 text-sm">{description}</div>}
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="text-petal-72 ring-grape hover:text-petal hover:ring-plum grid size-10 shrink-0 place-items-center rounded-full ring-1"
+                className="text-fg-muted ring-edge hover:text-fg hover:ring-accent-strong grid size-10 shrink-0 place-items-center rounded-full ring-1"
               >
                 <svg viewBox="0 0 24 24" className="size-4">
                   <path

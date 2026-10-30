@@ -38,10 +38,10 @@ export default async function AdminHome() {
   return (
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-2">
-        <h1 className="font-display text-petal text-4xl font-black tracking-tight sm:text-5xl">
+        <h1 className="font-display text-fg text-4xl font-black tracking-tight sm:text-5xl">
           Hello, {admin.name}.
         </h1>
-        <p className="text-petal-72">
+        <p className="text-fg-muted">
           Red flags first. Claude only suggests; you decide what reaches the big screen.
         </p>
       </div>
@@ -61,7 +61,7 @@ export default async function AdminHome() {
         />
         <Card href="/admin/quiz" title="Quiz" accent={control.phase !== 'locked'}>
           <p className="font-display text-3xl font-bold capitalize">{control.phase}</p>
-          <p className="text-petal-72 text-sm">
+          <p className="text-fg-muted text-sm">
             {control.quizTitle ? `${control.quizTitle} · ` : ''}
             {quizzes.length} {quizzes.length === 1 ? 'quiz' : 'quizzes'} ready
           </p>
@@ -70,7 +70,7 @@ export default async function AdminHome() {
           href="/admin/moments"
           title="Moments"
           counts={tally(moments)}
-          note="Approved covers appear in the public gallery."
+          note="Photos from the moments site. Originals stay in Drive."
         />
         {isSuper ? (
           <Card href="/admin/team" title="Admins & settings">
@@ -78,18 +78,18 @@ export default async function AdminHome() {
               {admins.filter((a) => !a.disabled).length}{' '}
               {admins.filter((a) => !a.disabled).length === 1 ? 'admin' : 'admins'}
             </p>
-            <p className="text-petal-72 text-sm">
+            <p className="text-fg-muted text-sm">
               Switches: {Object.entries(settings.switches).filter(([, on]) => on).length} of 4 open
               · Audit log · Drive
             </p>
           </Card>
         ) : (
-          <div className="bg-prussian/50 ring-grape/60 flex flex-col justify-between gap-6 rounded-[24px] p-6 ring-1">
+          <div className="bg-surface/50 ring-edge/60 flex flex-col justify-between gap-6 rounded-[24px] p-6 ring-1">
             <span className="flex items-center justify-between">
-              <span className="font-display text-petal-72 text-xl font-bold">
+              <span className="font-display text-fg-muted text-xl font-bold">
                 Admins & settings
               </span>
-              <svg viewBox="0 0 24 24" className="text-petal-50 size-5" aria-label="Locked">
+              <svg viewBox="0 0 24 24" className="text-fg-subtle size-5" aria-label="Locked">
                 <path
                   d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z"
                   stroke="currentColor"
@@ -99,20 +99,20 @@ export default async function AdminHome() {
                 />
               </svg>
             </span>
-            <p className="text-petal-50 text-sm">Superadmin only.</p>
+            <p className="text-fg-subtle text-sm">Superadmin only.</p>
           </div>
         )}
       </div>
 
       <section
-        className="bg-prussian ring-grape flex flex-col gap-4 rounded-[24px] p-6 ring-1"
+        className="bg-surface ring-edge flex flex-col gap-4 rounded-[24px] p-6 ring-1"
         aria-labelledby="marquee-h"
       >
         <div>
-          <h2 id="marquee-h" className="font-display text-petal text-xl font-bold">
+          <h2 id="marquee-h" className="font-display text-fg text-xl font-bold">
             Moving strip
           </h2>
-          <p className="text-petal-72 text-sm">
+          <p className="text-fg-muted text-sm">
             Push an announcement onto both screens and every student phone. It updates within
             seconds.
           </p>
@@ -139,7 +139,9 @@ function Card({
       href={href}
       className={cn(
         'group flex min-h-48 flex-col justify-between gap-6 rounded-[24px] p-6 ring-1 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5',
-        accent ? 'bg-plum text-ink ring-plum' : 'bg-prussian text-petal ring-grape hover:ring-plum',
+        accent
+          ? 'bg-accent text-fg ring-accent-strong'
+          : 'bg-surface text-fg ring-edge hover:ring-accent-strong',
       )}
     >
       <span className="flex items-center justify-between">
@@ -177,12 +179,12 @@ function ReviewCard({
   return (
     <Card href={href} title={title}>
       <div className="flex items-end gap-5">
-        <Stat value={counts.red} label="red" tone="text-coral" />
-        <Stat value={counts.green} label="green" tone="text-mint" />
-        <Stat value={counts.unscanned} label="unscanned" tone="text-petal-72" />
-        <Stat value={counts.approved} label="live" tone="text-plum" />
+        <Stat value={counts.red} label="red" tone="text-danger" />
+        <Stat value={counts.green} label="green" tone="text-ok" />
+        <Stat value={counts.unscanned} label="unscanned" tone="text-fg-muted" />
+        <Stat value={counts.approved} label="live" tone="text-accent-strong" />
       </div>
-      <p className="text-petal-72 mt-2 text-sm">{note}</p>
+      <p className="text-fg-muted mt-2 text-sm">{note}</p>
     </Card>
   );
 }
@@ -191,7 +193,7 @@ function Stat({ value, label, tone }: { value: number; label: string; tone: stri
   return (
     <span className="flex flex-col">
       <span className={cn('tabular font-mono text-3xl font-bold', tone)}>{value}</span>
-      <span className="text-petal-72 text-xs">{label}</span>
+      <span className="text-fg-muted text-xs">{label}</span>
     </span>
   );
 }

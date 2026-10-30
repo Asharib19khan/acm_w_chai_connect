@@ -2,15 +2,17 @@
 
 import { motion, useReducedMotion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { useIntroDone } from './intro';
 
-/** One authored entrance: the title rises out of a mask, like steam settling into letters. */
-export function HeroReveal({ children }: { children: ReactNode }) {
+/** Page entrance: content rises into place once the startup animation has lifted. */
+export function HeroReveal({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
   const reduce = useReducedMotion();
+  const ready = useIntroDone();
   return (
     <motion.div
-      initial={reduce ? false : { y: 40, opacity: 0, filter: 'blur(14px)' }}
-      animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-      transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+      initial={reduce ? false : { y: 28, opacity: 0 }}
+      animate={ready ? { y: 0, opacity: 1 } : undefined}
+      transition={{ duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>

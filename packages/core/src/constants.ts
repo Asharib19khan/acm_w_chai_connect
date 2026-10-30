@@ -40,7 +40,7 @@ export const GAME_SEEDS: GameSeed[] = [
     category: 'physical',
     teamSize: 1,
     capacity: 80,
-    blurb: 'Hiders brief in CS, seekers in EE. Twenty minutes, one arrow, ground floor only.',
+    blurb: 'Teams of five, two rounds of fifteen minutes: hide once, seek once. Your phone is the radar.',
   },
   {
     slug: 'scavenger-hunt',
@@ -90,6 +90,16 @@ export const GAME_SEEDS: GameSeed[] = [
     capacity: null,
     blurb: 'Flip, remember, match. The clock is the only opponent.',
   },
+  {
+    // Played on a game-station laptop; the game talks to the games desk API (amendment A8).
+    slug: 'skill-issues',
+    name: 'Skill Issues',
+    category: 'mini',
+    teamSize: 1,
+    capacity: null,
+    blurb:
+      'A hammer, a pot and a mountain. One timed climb at the game station, one turn each. Based on Getting Over It by Bennett Foddy.',
+  },
 ];
 
 export const DEFAULT_MARQUEE = ['ACM-W', 'CHAI CONNECT', 'NOV 25', 'FAST-NUCES KARACHI'];
@@ -113,6 +123,8 @@ export const LIMITS = {
   cvMaxPages: 3,
   interestNoteMax: 200,
   momentTitleMax: 60,
+  /** One photo or video. Full-quality phone video runs ~400 MB a minute in 4K. */
+  momentMaxBytes: 2 * 1024 ** 3,
   /** Dev upload chunk; the Cloudflare relay uses 8 MB in production. */
   uploadChunkBytes: 3 * 1024 * 1024,
 } as const;

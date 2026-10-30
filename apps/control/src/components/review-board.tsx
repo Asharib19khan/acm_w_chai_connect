@@ -151,8 +151,8 @@ export function ReviewBoard({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-petal text-4xl font-black tracking-tight">{title}</h1>
-          <p className="text-petal-72 mt-1 text-sm">
+          <h1 className="font-display text-fg text-4xl font-black tracking-tight">{title}</h1>
+          <p className="text-fg-muted mt-1 text-sm">
             <kbd className="font-mono">J</kbd>/<kbd className="font-mono">K</kbd> move ·{' '}
             <kbd className="font-mono">A</kbd> approve · <kbd className="font-mono">R</kbd> remove ·{' '}
             {kind !== 'questions' && (
@@ -191,13 +191,13 @@ export function ReviewBoard({
               }}
               className={cn(
                 'relative flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold',
-                tab === t.id ? 'text-ink' : 'text-petal-72 hover:text-petal',
+                tab === t.id ? 'text-fg' : 'text-fg-muted hover:text-fg',
               )}
             >
               {tab === t.id && (
                 <motion.span
                   layoutId={`tab-${kind}`}
-                  className="bg-plum absolute inset-0 rounded-full"
+                  className="bg-accent absolute inset-0 rounded-full"
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                 />
               )}
@@ -206,10 +206,10 @@ export function ReviewBoard({
                 className={cn(
                   'tabular relative font-mono text-xs',
                   tab === t.id
-                    ? 'text-ink/70'
+                    ? 'text-fg/70'
                     : t.id === 'red' && counts.red > 0
-                      ? 'text-coral'
-                      : 'text-petal-50',
+                      ? 'text-danger'
+                      : 'text-fg-subtle',
                 )}
               >
                 {counts[t.id]}
@@ -225,11 +225,11 @@ export function ReviewBoard({
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="bg-prussian ring-grape flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3 ring-1"
+            className="bg-surface ring-edge flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3 ring-1"
           >
             {selected.size > 0 ? (
               <>
-                <span className="text-petal text-sm font-semibold">{selected.size} selected</span>
+                <span className="text-fg text-sm font-semibold">{selected.size} selected</span>
                 {tab !== 'approved' && (
                   <Button size="sm" loading={pending} onClick={() => act([...selected], 'approve')}>
                     Approve selected
@@ -250,7 +250,7 @@ export function ReviewBoard({
               </>
             ) : (
               <>
-                <span className="text-petal-72 text-sm">
+                <span className="text-fg-muted text-sm">
                   Claude and the rules found nothing wrong with these.
                 </span>
                 <Button
@@ -272,7 +272,7 @@ export function ReviewBoard({
       </AnimatePresence>
 
       {visible.length === 0 ? (
-        <div className="bg-prussian ring-grape rounded-[24px] ring-1">
+        <div className="bg-surface ring-edge rounded-[24px] ring-1">
           <EmptyState title={tab === 'red' ? 'No red flags. Nice.' : 'Nothing here.'}>
             {tab === 'red'
               ? 'New submissions appear here the moment they are flagged.'
@@ -298,8 +298,8 @@ export function ReviewBoard({
                       className={cn(
                         'flex items-start gap-3 rounded-2xl p-4 ring-1 transition-colors',
                         active
-                          ? 'bg-prussian-2 ring-plum'
-                          : 'bg-prussian ring-grape hover:ring-petal-50',
+                          ? 'bg-surface-2 ring-accent-strong'
+                          : 'bg-surface ring-edge hover:ring-fg-subtle',
                       )}
                       onClick={() => setCursor(i)}
                     >
@@ -316,7 +316,7 @@ export function ReviewBoard({
                             return next;
                           })
                         }
-                        className="mt-1 size-4.5 shrink-0 accent-[var(--cc-plum)]"
+                        className="mt-1 size-4.5 shrink-0 accent-[var(--cc-accent-strong)]"
                       />
                       {item.moment?.coverUrl && (
                         // eslint-disable-next-line @next/next/no-img-element -- admin-only cover preview
@@ -333,13 +333,13 @@ export function ReviewBoard({
                       >
                         <span
                           className={cn(
-                            'text-petal text-[0.98rem] leading-snug',
+                            'text-fg text-[0.98rem] leading-snug',
                             kind !== 'questions' && 'font-semibold',
                           )}
                         >
                           {item.title}
                         </span>
-                        <span className="text-petal-72 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <span className="text-fg-muted flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                           <FlagPill item={item} />
                           {item.meta.map((m) => (
                             <span key={m}>{m}</span>
@@ -374,17 +374,20 @@ export function ReviewBoard({
 
 function FlagPill({ item }: { item: ReviewItem }) {
   if (item.status === 'pending_scan')
-    return <span className="ring-grape self-start rounded-full px-2 py-0.5 ring-1">unscanned</span>;
+    return <span className="ring-edge self-start rounded-full px-2 py-0.5 ring-1">unscanned</span>;
   if (!item.flag) return null;
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1.5 self-start rounded-full px-2 py-0.5 font-semibold ring-1',
-        item.flag === 'red' ? 'text-coral ring-coral/50' : 'text-mint ring-mint/40',
+        item.flag === 'red' ? 'text-danger ring-danger/50' : 'text-ok ring-ok/40',
       )}
     >
       <span
-        className={cn('size-1.5 rounded-full', item.flag === 'red' ? 'bg-coral' : 'bg-mint')}
+        className={cn(
+          'size-1.5 rounded-full',
+          item.flag === 'red' ? 'bg-danger-soft' : 'bg-ok-soft',
+        )}
         aria-hidden
       />
       {item.flag}
@@ -409,21 +412,21 @@ function Detail({
   act: (ids: string[], action: 'approve' | 'remove' | 'restore', reason?: string) => void;
 }) {
   return (
-    <div className="bg-prussian ring-grape flex flex-col gap-5 rounded-[24px] p-6 ring-1">
+    <div className="bg-surface ring-edge flex flex-col gap-5 rounded-[24px] p-6 ring-1">
       <div className="flex flex-col gap-3">
         <FlagPill item={item} />
         {item.reasons.length > 0 ? (
-          <ul className="text-petal-72 flex flex-col gap-1 text-sm">
+          <ul className="text-fg-muted flex flex-col gap-1 text-sm">
             {item.reasons.map((r) => (
               <li key={r}>{r}</li>
             ))}
           </ul>
         ) : (
           item.status !== 'pending_scan' && (
-            <p className="text-petal-72 text-sm">No problems found.</p>
+            <p className="text-fg-muted text-sm">No problems found.</p>
           )
         )}
-        <p className="text-petal-50 text-xs">
+        <p className="text-fg-subtle text-xs">
           {item.flagSource === 'claude'
             ? 'Flag by Claude'
             : item.flagSource === 'rules'
@@ -448,14 +451,14 @@ function Detail({
             href={item.moment.originalUrl}
             target="_blank"
             rel="noopener"
-            className="text-plum hover:text-petal text-sm font-semibold"
+            className="text-accent-strong hover:text-fg text-sm font-semibold"
           >
             Open original (full quality)
           </a>
         </div>
       )}
 
-      <div className="border-petal-12 flex flex-col gap-3 border-t pt-5">
+      <div className="border-line flex flex-col gap-3 border-t pt-5">
         <AnimatePresence mode="wait" initial={false}>
           {removing ? (
             <motion.div
@@ -465,7 +468,7 @@ function Detail({
               exit={{ opacity: 0 }}
               className="flex flex-col gap-2"
             >
-              <p className="text-petal text-sm font-semibold">Why remove it?</p>
+              <p className="text-fg text-sm font-semibold">Why remove it?</p>
               <div className="flex flex-wrap gap-2">
                 {REASONS.filter((r) => kind === 'cvs' || r.id !== 'not_a_cv').map((r) => (
                   <Button
@@ -557,7 +560,7 @@ function QuestionTools({ item }: { item: ReviewItem }) {
           </div>
         </>
       ) : (
-        <blockquote className="font-display text-petal text-xl leading-snug font-semibold">
+        <blockquote className="font-display text-fg text-xl leading-snug font-semibold">
           “{item.title}”
         </blockquote>
       )}
@@ -605,7 +608,7 @@ function CvTools({ item }: { item: ReviewItem }) {
   return (
     <div className="flex flex-col gap-4">
       {cv.activeContent && (
-        <p className="text-coral ring-coral/50 rounded-xl px-3 py-2 text-sm font-semibold ring-1">
+        <p className="text-danger ring-danger/50 rounded-xl px-3 py-2 text-sm font-semibold ring-1">
           This PDF carries active content (scripts or actions). Do not open it outside the browser
           viewer.
         </p>
@@ -614,12 +617,12 @@ function CvTools({ item }: { item: ReviewItem }) {
         href={cv.viewUrl}
         target="_blank"
         rel="noopener"
-        className="bg-ink-2 text-petal ring-grape hover:ring-plum inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold ring-1"
+        className="bg-surface-2 text-fg ring-edge hover:ring-accent-strong inline-flex h-11 items-center justify-center rounded-full px-5 text-sm font-semibold ring-1"
       >
         View PDF
       </a>
       <div className="flex flex-col gap-2">
-        <p className="text-petal text-sm font-semibold">
+        <p className="text-fg text-sm font-semibold">
           Screen summary {cv.consentDisplay ? '' : '(student did not consent to the screen)'}
         </p>
         <Input

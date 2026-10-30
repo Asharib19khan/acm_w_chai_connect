@@ -27,7 +27,7 @@ export function QrCode({
       viewBox={`0 0 ${total} ${total}`}
       role="img"
       aria-label={label ?? `QR code for ${value}`}
-      className={cn('bg-petal rounded-[6%]', className)}
+      className={cn('rounded-[6%] bg-white', className)}
       shapeRendering="crispEdges"
     >
       <path

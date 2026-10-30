@@ -28,7 +28,7 @@ export default async function MomentsReview() {
         reviewedBy: nameOf(m.reviewedBy),
         removedReason: m.removedReason,
         title: m.title ?? m.fileName,
-        meta: [`by ${m.uploaderName}`, size(m.sizeBytes), m.mime.replace('image/', '')],
+        meta: [`by ${m.uploaderName}`, size(m.sizeBytes), m.mime.replace(/^(image|video)\//, '')],
         moment: {
           coverUrl: m.coverKey ? `/admin/moments/${m.id}/cover` : null,
           originalUrl: `/admin/moments/${m.id}/original`,

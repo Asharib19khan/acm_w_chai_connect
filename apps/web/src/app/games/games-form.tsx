@@ -77,12 +77,12 @@ export function GamesForm({ games }: { games: GameCard[] }) {
         onChange={setMini}
       />
       {errors.physical && (
-        <p className="text-coral -mt-8 text-sm font-medium" role="alert">
+        <p className="text-danger -mt-8 text-sm font-medium" role="alert">
           {errors.physical}
         </p>
       )}
 
-      <div className="border-petal-12 flex flex-col gap-6 border-t pt-8">
+      <div className="border-line flex flex-col gap-6 border-t pt-8">
         <IdentityFields
           rollNo={rollNo}
           department={department}
@@ -91,12 +91,12 @@ export function GamesForm({ games }: { games: GameCard[] }) {
           errors={errors}
         />
         {formError && (
-          <p role="alert" className="text-coral text-sm font-medium">
+          <p role="alert" className="text-danger text-sm font-medium">
             {formError}
           </p>
         )}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-petal-72 text-sm">
+          <p className="text-fg-muted text-sm">
             Each student can join one physical game and one minigame.
           </p>
           <Button type="submit" size="lg" loading={pending} disabled={!physical && !mini}>
@@ -124,10 +124,10 @@ function GameGroup({
   return (
     <fieldset>
       <legend className="flex w-full items-baseline justify-between gap-4 pb-4">
-        <span className="font-display text-petal text-2xl font-bold">{title}</span>
-        <span className="text-petal-72 text-sm">{hint}</span>
+        <span className="font-display text-fg text-2xl font-bold">{title}</span>
+        <span className="text-fg-muted text-sm">{hint}</span>
       </legend>
-      <div role="radiogroup" aria-label={title} className="border-petal-12 border-t">
+      <div role="radiogroup" aria-label={title} className="border-line border-t">
         {games.map((game) => {
           const selected = value === game.id;
           const closed = game.status !== 'open';
@@ -140,30 +140,32 @@ function GameGroup({
               disabled={closed}
               onClick={() => onChange(selected ? null : game.id)}
               className={cn(
-                'group border-petal-12 relative flex w-full items-start gap-4 border-b py-5 text-left transition-colors disabled:opacity-50',
-                !closed && 'hover:bg-petal-06',
+                'group border-line relative flex w-full items-start gap-4 border-b py-5 text-left transition-colors disabled:opacity-50',
+                !closed && 'hover:bg-wash',
               )}
             >
               {selected && (
                 <motion.span
                   layoutId={`pick-${games[0]?.category}`}
-                  className="bg-plum-16 absolute inset-0 -z-0"
+                  className="bg-accent-soft absolute inset-0 -z-0"
                   transition={{ type: 'spring', stiffness: 420, damping: 36 }}
                 />
               )}
               <span
                 className={cn(
                   'relative mt-1 grid size-6 shrink-0 place-items-center rounded-full ring-2 transition-colors ring-inset',
-                  selected ? 'bg-plum ring-plum' : 'ring-grape group-hover:ring-petal-50',
+                  selected
+                    ? 'bg-accent ring-accent-strong'
+                    : 'ring-edge group-hover:ring-fg-subtle',
                 )}
                 aria-hidden
               >
-                {selected && <span className="bg-ink size-2.5 rounded-full" />}
+                {selected && <span className="bg-canvas size-2.5 rounded-full" />}
               </span>
               <span className="relative flex min-w-0 flex-1 flex-col gap-1 pr-2">
                 <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-display text-petal text-xl font-semibold">{game.name}</span>
-                  <span className="text-petal-72 text-xs font-medium">
+                  <span className="font-display text-fg text-xl font-semibold">{game.name}</span>
+                  <span className="text-fg-muted text-xs font-medium">
                     {game.teamSize > 1 ? `Teams of ${game.teamSize}` : 'Solo'}
                     {' · '}
                     {closed
@@ -175,7 +177,7 @@ function GameGroup({
                           : `${game.spotsLeft} spots left`}
                   </span>
                 </span>
-                <span className="text-petal-72 text-[0.95rem] leading-snug">{game.blurb}</span>
+                <span className="text-fg-muted text-[0.95rem] leading-snug">{game.blurb}</span>
               </span>
             </button>
           );
@@ -193,7 +195,7 @@ function Confirmation({ done, rollNo }: { done: Done; rollNo: string }) {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col gap-8"
     >
-      <div className="bg-plum text-ink overflow-hidden rounded-[28px]">
+      <div className="bg-accent text-fg overflow-hidden rounded-[28px]">
         <div className="flex flex-col gap-1 p-6 sm:p-8">
           <span className="text-sm font-semibold">You’re in</span>
           <span className="font-display text-3xl font-black tracking-tight sm:text-4xl">
@@ -205,14 +207,14 @@ function Confirmation({ done, rollNo }: { done: Done; rollNo: string }) {
             </span>
           )}
         </div>
-        <div className="border-ink/25 grid grid-cols-2 border-t-2 border-dashed">
+        <div className="border-fg/25 grid grid-cols-2 border-t-2 border-dashed">
           <div className="flex flex-col gap-1 p-6 sm:p-8">
             <span className="text-xs font-semibold">Confirmation</span>
             <span className="font-mono text-xl font-bold tracking-wider whitespace-nowrap sm:text-2xl">
               {done.confirmationCode}
             </span>
           </div>
-          <div className="border-ink/25 flex flex-col gap-1 border-l-2 border-dashed p-6 sm:p-8">
+          <div className="border-fg/25 flex flex-col gap-1 border-l-2 border-dashed p-6 sm:p-8">
             <span className="text-xs font-semibold">Pass code</span>
             <span className="font-mono text-xl font-bold tracking-[0.2em] whitespace-nowrap sm:text-2xl">
               {done.passCode}
@@ -220,10 +222,10 @@ function Confirmation({ done, rollNo }: { done: Done; rollNo: string }) {
           </div>
         </div>
       </div>
-      <p className="text-petal-72 max-w-md">
-        <strong className="text-petal">Screenshot this.</strong> You need your roll number{' '}
-        <span className="text-petal font-mono">{rollNo}</span> and the pass code to play. It is
-        shown only once; the desk can reset it if you lose it.
+      <p className="text-fg-muted max-w-md">
+        <strong className="text-fg">Screenshot this.</strong> You need your roll number{' '}
+        <span className="text-fg font-mono">{rollNo}</span> and the pass code to play. It is shown
+        only once; the desk can reset it if you lose it.
       </p>
       <ButtonLink href="/" variant="secondary" className="self-start">
         Back home
@@ -285,19 +287,19 @@ export function LookupForm() {
         </Button>
       </div>
       {error && (
-        <p className="text-coral text-sm font-medium" role="alert">
+        <p className="text-danger text-sm font-medium" role="alert">
           {error}
         </p>
       )}
       {rows && (
-        <ul className="border-petal-12 border-t">
+        <ul className="border-line border-t">
           {rows.map((r) => (
             <li
               key={r.game}
-              className="border-petal-12 flex items-center justify-between border-b py-3"
+              className="border-line flex items-center justify-between border-b py-3"
             >
-              <span className="text-petal font-semibold">{r.game}</span>
-              <span className="text-petal-72 text-sm">
+              <span className="text-fg font-semibold">{r.game}</span>
+              <span className="text-fg-muted text-sm">
                 {r.status.replace('_', ' ')}
                 {r.round ? ` · round ${r.round}` : ''}
                 {r.team ? ` · ${r.team}` : ''}

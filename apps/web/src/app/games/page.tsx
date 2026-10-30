@@ -28,11 +28,11 @@ export default async function GamesPage() {
       ) : (
         <ClosedState what="Registration is" />
       )}
-      <section className="border-petal-12 mt-20 border-t pt-10" aria-labelledby="lookup">
-        <h2 id="lookup" className="font-display text-petal text-2xl font-bold">
+      <section className="border-line mt-20 border-t pt-10" aria-labelledby="lookup">
+        <h2 id="lookup" className="font-display text-fg text-2xl font-bold">
           Already registered?
         </h2>
-        <p className="text-petal-72 mt-2 mb-6">
+        <p className="text-fg-muted mt-2 mb-6">
           Check your games, team and round. Changes happen at the registration desk.
         </p>
         <LookupForm />

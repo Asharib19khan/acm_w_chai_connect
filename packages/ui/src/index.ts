@@ -6,6 +6,8 @@ export const BRAND = {
 
 /** Palette for places CSS variables can't reach (e.g. viewport themeColor). Mirrors tokens.css. */
 export const PALETTE = {
+  /* Light canvas: Petal mixed 30% into white (tokens.css --cc-canvas). */
+  canvas: '#fff0f8',
   ink: '#011c27',
   prussian: '#03254e',
   grape: '#545677',

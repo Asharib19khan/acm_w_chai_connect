@@ -3,7 +3,7 @@ import { generateTotpSecret, otpauthUrl, verifyTotp } from '@chai/core/totp';
 import { decrypt, encrypt, hmac, newId, randomToken, serverKey } from '../crypto';
 import { dbEnv } from '../env';
 import { mutate, now, read, UserError } from '../store';
-import type { Admin, AdminRole, AdminSession, Db } from '../types';
+import type { Admin, AdminRole, AdminSession, Db, SessionApp } from '../types';
 import { writeAudit } from './audit';
 
 const SESSION_ABSOLUTE_MS = 12 * 60 * 60 * 1000;
@@ -211,6 +211,11 @@ export async function hasSuperadmin(): Promise<boolean> {
 
 const GENERIC = "Couldn't sign you in";
 
+/** Members may only use the games desk. Admins and the superadmin may use both sites. */
+export function roleAllowedOn(role: AdminRole, app: SessionApp): boolean {
+  return app === 'desk' || role !== 'member';
+}
+
 /**
  * Verifies email + code. Unknown emails, wrong codes and locked accounts all return the same
  * message, so nobody can learn which emails are admins.
@@ -219,6 +224,7 @@ export async function signIn(
   emailInput: string,
   code: string,
   userAgent: string | null,
+  app: SessionApp = 'control',
 ): Promise<{ ok: true; token: string; admin: PublicAdmin } | { ok: false; message: string }> {
   const email = normalizeEmail(emailInput);
   return mutate((db) => {
@@ -226,6 +232,19 @@ export async function signIn(
     if (!admin) {
       // Same work as a real check so timing reveals nothing.
       verifyTotp(generateTotpSecret(), code);
+      return { ok: false as const, message: GENERIC };
+    }
+    if (!roleAllowedOn(admin.role, app)) {
+      // A member trying the admin portal: same answer as a wrong code, and it is audited.
+      verifyTotp(generateTotpSecret(), code);
+      writeAudit(
+        db,
+        { id: admin.id, name: admin.name },
+        'auth.wrong_site',
+        'admins',
+        admin.id,
+        app,
+      );
       return { ok: false as const, message: GENERIC };
     }
     const lockedSoft = admin.lockedUntil && Date.parse(admin.lockedUntil) > Date.now();
@@ -261,13 +280,14 @@ export async function signIn(
     db.adminSessions.push({
       id: newId('ses'),
       adminId: admin.id,
+      app,
       tokenHash: hashToken(token),
       expiresAt: new Date(Date.now() + SESSION_ABSOLUTE_MS).toISOString(),
       lastSeenAt: now(),
       revokedAt: null,
       userAgent: userAgent?.slice(0, 200) ?? null,
     });
-    writeAudit(db, { id: admin.id, name: admin.name }, 'auth.sign_in', 'admins', admin.id, null);
+    writeAudit(db, { id: admin.id, name: admin.name }, 'auth.sign_in', 'admins', admin.id, app);
     return { ok: true as const, token, admin: toPublic(db, admin) };
   });
 }
@@ -294,6 +314,7 @@ export async function signInWithRecovery(
     db.adminSessions.push({
       id: newId('ses'),
       adminId: admin.id,
+      app: 'control',
       tokenHash: hashToken(token),
       expiresAt: new Date(Date.now() + SESSION_ABSOLUTE_MS).toISOString(),
       lastSeenAt: now(),
@@ -310,18 +331,24 @@ export interface SessionInfo {
   session: AdminSession;
 }
 
-/** Resolves a session token. Expired, idle, revoked or disabled sessions resolve to null. */
-export async function sessionFromToken(token: string | undefined): Promise<SessionInfo | null> {
+/**
+ * Resolves a session token for one site. Expired, idle, revoked or disabled sessions, sessions
+ * made on the other site, and members on the admin portal all resolve to null.
+ */
+export async function sessionFromToken(
+  token: string | undefined,
+  app: SessionApp = 'control',
+): Promise<SessionInfo | null> {
   if (!token) return null;
   const db = await read();
   const hash = hashToken(token);
   const session = db.adminSessions.find((s) => s.tokenHash === hash);
-  if (!session || session.revokedAt) return null;
+  if (!session || session.revokedAt || (session.app ?? 'control') !== app) return null;
   const t = Date.now();
   if (Date.parse(session.expiresAt) < t || t - Date.parse(session.lastSeenAt) > SESSION_IDLE_MS)
     return null;
   const admin = db.admins.find((a) => a.id === session.adminId);
-  if (!admin || admin.disabled) return null;
+  if (!admin || admin.disabled || !roleAllowedOn(admin.role, app)) return null;
   if (t - Date.parse(session.lastSeenAt) > 60_000) {
     await mutate((d) => {
       const s = d.adminSessions.find((x) => x.id === session.id);

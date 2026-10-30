@@ -60,14 +60,14 @@ function CvTile({ data }: { data: DisplayData }) {
   return (
     <div className="flex h-full flex-col justify-between">
       <p className="flex items-baseline gap-[0.4em]">
-        <span className="font-display text-plum tabular text-[4em] leading-none font-black">
+        <span className="font-display text-accent-strong tabular text-[4em] leading-none font-black">
           <AnimatedNumber value={data.cvCount} />
         </span>
-        <span className="text-petal-72 text-[1.2em]">shared with partners</span>
+        <span className="text-fg-muted text-[1.2em]">shared with partners</span>
       </p>
       <div className="flex flex-wrap gap-[0.5em]">
         {skills.slice(0, 5).map((s) => (
-          <span key={s} className="ring-grape rounded-full px-[0.9em] py-[0.3em] text-[1em] ring-1">
+          <span key={s} className="ring-edge rounded-full px-[0.9em] py-[0.3em] text-[1em] ring-1">
             {s}
           </span>
         ))}
@@ -88,9 +88,9 @@ function CvFull({ data }: { data: DisplayData }) {
   const list = loop ? [...data.cvs, ...data.cvs] : data.cvs;
   return (
     <div className="flex h-full flex-col gap-[1.6em]">
-      <p className="text-petal-72 text-[1.6em]">
-        <span className="font-display text-plum font-bold">{data.cvCount}</span> CVs shared with
-        partner companies. Names stay private.
+      <p className="text-fg-muted text-[1.6em]">
+        <span className="font-display text-accent-strong font-bold">{data.cvCount}</span> CVs shared
+        with partner companies. Names stay private.
       </p>
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
@@ -102,13 +102,13 @@ function CvFull({ data }: { data: DisplayData }) {
               key={`${cv.id}-${i}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-ink-2 ring-grape flex flex-col gap-[1em] rounded-[1.4em] p-[1.6em] ring-1"
+              className="bg-surface-2 ring-edge flex flex-col gap-[1em] rounded-[1.4em] p-[1.6em] ring-1"
             >
               <div className="flex items-center gap-[0.6em] text-[1.1em]">
-                <span className="bg-plum text-ink rounded-full px-[0.8em] py-[0.15em] font-bold">
+                <span className="bg-accent text-fg rounded-full px-[0.8em] py-[0.15em] font-bold">
                   {cv.department}
                 </span>
-                <span className="text-petal-72">{cv.batch}</span>
+                <span className="text-fg-muted">{cv.batch}</span>
               </div>
               {cv.headline && (
                 <p className="font-display text-[1.5em] leading-tight font-semibold">
@@ -119,14 +119,14 @@ function CvFull({ data }: { data: DisplayData }) {
                 {cv.skills.map((s) => (
                   <span
                     key={s}
-                    className="ring-grape rounded-full px-[0.8em] py-[0.25em] text-[1em] ring-1"
+                    className="ring-edge rounded-full px-[0.8em] py-[0.25em] text-[1em] ring-1"
                   >
                     {s}
                   </span>
                 ))}
               </div>
               {cv.openTo.length > 0 && (
-                <p className="text-petal-72 text-[1em]">Open to {cv.openTo.join(', ')}</p>
+                <p className="text-fg-muted text-[1em]">Open to {cv.openTo.join(', ')}</p>
               )}
             </motion.article>
           ))}
@@ -161,18 +161,18 @@ function QuestionsTile({ data }: { data: DisplayData }) {
           className="font-display text-[2.9em] leading-[1.1] font-bold tracking-tight text-balance"
         >
           “{newest.body}”
-          <footer className="text-plum mt-[0.5em] font-sans text-[0.5em] font-medium">
+          <footer className="text-accent-strong mt-[0.5em] font-sans text-[0.5em] font-medium">
             — {newest.name ?? 'Anonymous'}
           </footer>
         </motion.blockquote>
       </AnimatePresence>
-      <div className="border-petal-12 flex flex-col gap-[0.6em] border-t pt-[1em]">
+      <div className="border-line flex flex-col gap-[0.6em] border-t pt-[1em]">
         {open.slice(1, 3).map((q) => (
-          <p key={q.id} className="text-petal-72 truncate text-[1.25em]">
+          <p key={q.id} className="text-fg-muted truncate text-[1.25em]">
             {q.body}
           </p>
         ))}
-        <p className="text-petal-50 text-[1em]">
+        <p className="text-fg-subtle text-[1em]">
           {open.length} waiting · {data.questions.length - open.length} answered
         </p>
       </div>
@@ -206,12 +206,12 @@ function QuestionsFull({ data, presenter }: { data: DisplayData; presenter: bool
               layout
               initial={{ opacity: 0, scale: 0.94 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="group bg-ink-2 ring-grape mb-[1.2em] break-inside-avoid rounded-[1.4em] p-[1.6em] ring-1"
+              className="group bg-surface-2 ring-edge mb-[1.2em] break-inside-avoid rounded-[1.4em] p-[1.6em] ring-1"
             >
               <blockquote className="text-[1.6em] leading-snug font-semibold text-balance">
                 {q.body}
               </blockquote>
-              <figcaption className="text-petal-72 mt-[0.8em] flex items-center justify-between text-[1.05em]">
+              <figcaption className="text-fg-muted mt-[0.8em] flex items-center justify-between text-[1.05em]">
                 <span>— {q.name ?? 'Anonymous'}</span>
                 <span>{ago(q.createdAt)}</span>
               </figcaption>
@@ -219,14 +219,14 @@ function QuestionsFull({ data, presenter }: { data: DisplayData; presenter: bool
                 <div className="mt-[1em] flex gap-[0.6em] opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                   <button
                     type="button"
-                    className="bg-plum text-ink rounded-full px-[1em] py-[0.4em] text-[1em] font-bold"
+                    className="bg-accent text-fg rounded-full px-[1em] py-[0.4em] text-[1em] font-bold"
                     onClick={() => act(() => spotlightAction(q.id, true))}
                   >
                     Spotlight
                   </button>
                   <button
                     type="button"
-                    className="ring-grape rounded-full px-[1em] py-[0.4em] text-[1em] font-semibold ring-1"
+                    className="ring-edge rounded-full px-[1em] py-[0.4em] text-[1em] font-semibold ring-1"
                     onClick={() => act(() => answeredAction(q.id, true))}
                   >
                     Mark answered
@@ -238,8 +238,8 @@ function QuestionsFull({ data, presenter }: { data: DisplayData; presenter: bool
         </div>
       </div>
       {answered.length > 0 && (
-        <div className="border-petal-12 text-petal-50 flex shrink-0 items-center gap-[1em] overflow-hidden border-t pt-[1em] text-[1.1em]">
-          <span className="text-petal-72 shrink-0 font-semibold">Answered</span>
+        <div className="border-line text-fg-subtle flex shrink-0 items-center gap-[1em] overflow-hidden border-t pt-[1em] text-[1.1em]">
+          <span className="text-fg-muted shrink-0 font-semibold">Answered</span>
           {answered.slice(0, 4).map((q) => (
             <span key={q.id} className="truncate">
               {q.body}
@@ -289,7 +289,7 @@ function QuizBody({
       <Quiet title="The quiz is locked." />
     ) : (
       <div className="flex h-full flex-col justify-end gap-[0.6em]">
-        <svg viewBox="0 0 24 24" className="text-plum size-[3.6em]" aria-hidden>
+        <svg viewBox="0 0 24 24" className="text-accent-strong size-[3.6em]" aria-hidden>
           <path
             d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z"
             stroke="currentColor"
@@ -298,7 +298,7 @@ function QuizBody({
             strokeLinejoin="round"
           />
         </svg>
-        <p className="text-petal-72 text-[1.4em]">Locked until the host opens it.</p>
+        <p className="text-fg-muted text-[1.4em]">Locked until the host opens it.</p>
       </div>
     );
   }
@@ -325,7 +325,7 @@ function QuizBody({
                   key={r}
                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className="bg-ink text-petal rounded-full px-[0.9em] py-[0.3em] font-mono text-[1.15em]"
+                  className="bg-canvas text-fg rounded-full px-[0.9em] py-[0.3em] font-mono text-[1.15em]"
                 >
                   {r}
                 </motion.span>
@@ -412,15 +412,15 @@ function QuizBody({
               className="flex w-[13em] flex-col items-center gap-[0.8em]"
             >
               <span className="font-mono text-[1.6em] font-bold">{r.rollNo}</span>
-              <span className="text-petal-72 font-mono text-[1.3em]">
+              <span className="text-fg-muted font-mono text-[1.3em]">
                 {r.score.toLocaleString()}
               </span>
               <div
                 className={cn(
                   'font-display grid w-full place-items-start justify-center rounded-t-[1.2em] pt-[1em] font-black',
                   i === 1
-                    ? 'bg-plum text-ink h-[22em]'
-                    : 'bg-prussian-2 text-petal ring-grape h-[15em] ring-1',
+                    ? 'bg-accent text-fg h-[22em]'
+                    : 'bg-surface-2 text-fg ring-edge h-[15em] ring-1',
                 )}
               >
                 <span className={i === 1 ? 'text-[5em] leading-none' : 'text-[3.6em] leading-none'}>
@@ -444,7 +444,7 @@ function QuizBody({
       ) : (
         <div className="flex flex-col justify-end gap-[0.6em]">
           <p className="font-display text-[3.4em] leading-none font-black">That’s the quiz.</p>
-          <p className="text-petal-72 text-[1.6em]">
+          <p className="text-fg-muted text-[1.6em]">
             {q.joined} played · {q.questionCount} questions
           </p>
         </div>
@@ -460,18 +460,29 @@ function QuizBody({
 
 /* ---------------- Games ---------------- */
 
+/** The tile fits five games: live ones first, then games with scores, then the rest in order. */
+function tileGames(games: DisplayData['games']) {
+  const weight = (g: DisplayData['games'][number]) =>
+    g.status === 'live' ? 0 : g.top.length > 0 ? 1 : 2;
+  return games
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => weight(a.g) - weight(b.g) || a.i - b.i)
+    .slice(0, 5)
+    .map(({ g }) => g);
+}
+
 function GamesTile({ data }: { data: DisplayData }) {
   return (
     <ul className="flex h-full flex-col justify-between">
-      {data.games.slice(0, 5).map((g) => (
+      {tileGames(data.games).map((g) => (
         <li
           key={g.id}
-          className="border-petal-12 flex items-baseline justify-between border-b py-[0.45em] last:border-0"
+          className="border-line flex items-baseline justify-between border-b py-[0.45em] last:border-0"
         >
           <span className="text-[1.35em] font-semibold">{g.name}</span>
-          <span className="text-petal-72 flex items-baseline gap-[0.8em] text-[1.05em]">
+          <span className="text-fg-muted flex items-baseline gap-[0.8em] text-[1.05em]">
             {g.top[0] && (
-              <span className="text-petal font-mono">{g.top[0].team ?? g.top[0].rollNo}</span>
+              <span className="text-fg font-mono">{g.top[0].team ?? g.top[0].rollNo}</span>
             )}
             <span>{g.players} in</span>
           </span>
@@ -492,7 +503,7 @@ function GamesFull({ data }: { data: DisplayData }) {
         <ul className="flex flex-col gap-[0.4em]">
           {(['physical', 'mini'] as const).map((cat) => (
             <li key={cat} className="flex flex-col gap-[0.4em]">
-              <p className="text-petal-50 mt-[0.6em] text-[1em] font-semibold">
+              <p className="text-fg-subtle mt-[0.6em] text-[1em] font-semibold">
                 {cat === 'physical' ? 'Physical' : 'Minigames'}
               </p>
               {data.games
@@ -504,13 +515,13 @@ function GamesFull({ data }: { data: DisplayData }) {
                     onClick={() => setActive(g.id)}
                     className={cn(
                       'relative flex items-center justify-between rounded-[1em] px-[1em] py-[0.7em] text-left text-[1.3em] font-semibold',
-                      g.id === active ? 'text-ink' : 'text-petal hover:bg-petal-06',
+                      g.id === active ? 'text-fg' : 'text-fg hover:bg-wash',
                     )}
                   >
                     {g.id === active && (
                       <motion.span
                         layoutId="game-pick"
-                        className="bg-plum absolute inset-0 rounded-[0.8em]"
+                        className="bg-accent absolute inset-0 rounded-[0.8em]"
                       />
                     )}
                     <span className="relative">{g.name}</span>
@@ -525,7 +536,7 @@ function GamesFull({ data }: { data: DisplayData }) {
       </LayoutGroup>
       {game && (
         <div className="flex min-h-0 flex-col gap-[1.2em]">
-          <p className="text-petal-72 text-[1.5em]">
+          <p className="text-fg-muted text-[1.5em]">
             {game.players} players ·{' '}
             {game.status === 'live'
               ? 'live now'
@@ -582,14 +593,14 @@ function Board({
           transition={{ type: 'spring', stiffness: 260, damping: 30 }}
           className={cn(
             'grid grid-cols-[3em_1fr_auto] items-baseline gap-[1em] border-b py-[0.5em]',
-            onPlum ? 'border-ink/15' : 'border-petal-12',
+            onPlum ? 'border-fg/15' : 'border-line',
             big ? 'text-[1.7em]' : 'text-[1.25em]',
           )}
         >
           <span
             className={cn(
               'font-display tabular font-black',
-              r.rank === 1 ? (onPlum ? 'text-ink' : 'text-plum') : 'opacity-60',
+              r.rank === 1 ? (onPlum ? 'text-fg' : 'text-accent-strong') : 'opacity-60',
             )}
           >
             {r.rank}
@@ -611,7 +622,7 @@ function Quiet({ title }: { title: string }) {
   return (
     <div className="flex h-full flex-col items-start justify-end gap-[0.8em]">
       <ChaiCup className="h-[4em] w-auto opacity-70" steam={false} />
-      <p className="text-petal-72 text-[1.4em]">{title}</p>
+      <p className="text-fg-muted text-[1.4em]">{title}</p>
     </div>
   );
 }
@@ -641,7 +652,7 @@ function Brewing({ data, mode }: { data: DisplayData; mode: 'tile' | 'full' }) {
             alt={m.title ?? `Photo by ${m.by}`}
             className="min-h-0 flex-1 rounded-[1.4em] object-contain"
           />
-          <figcaption className="text-petal-72 text-[1.4em]">
+          <figcaption className="text-fg-muted text-[1.4em]">
             {m.title ? `${m.title} · ` : ''}by {m.by}
           </figcaption>
         </motion.figure>
@@ -650,7 +661,7 @@ function Brewing({ data, mode }: { data: DisplayData; mode: 'tile' | 'full' }) {
   }
   return (
     <div className="flex h-full items-end justify-between">
-      <p className={cn('text-petal-72', mode === 'full' ? 'text-[2em]' : 'text-[1.2em]')}>
+      <p className={cn('text-fg-muted', mode === 'full' ? 'text-[2em]' : 'text-[1.2em]')}>
         Something’s brewing.
       </p>
       <ChaiCup className={mode === 'full' ? 'h-[14em] w-auto' : 'h-[5em] w-auto'} />

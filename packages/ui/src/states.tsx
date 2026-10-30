@@ -30,8 +30,8 @@ export function EmptyState({
       )}
     >
       <ChaiCup className="h-14 w-auto opacity-60" steam={false} />
-      <p className="font-display text-petal mt-5 text-lg font-semibold">{title}</p>
-      {children && <div className="text-petal-72 mt-2 max-w-sm text-sm">{children}</div>}
+      <p className="font-display text-fg mt-5 text-lg font-semibold">{title}</p>
+      {children && <div className="text-fg-muted mt-2 max-w-sm text-sm">{children}</div>}
       {action && <div className="mt-6">{action}</div>}
     </div>
   );
@@ -43,13 +43,13 @@ export function ErrorState({ title, children, action, className }: StateProps) {
       role="alert"
       className={cn('flex flex-col items-center px-6 py-14 text-center', className)}
     >
-      <div className="ring-coral/60 grid size-14 place-items-center rounded-full ring-1">
-        <svg viewBox="0 0 24 24" className="text-coral size-6" aria-hidden>
+      <div className="ring-danger/60 grid size-14 place-items-center rounded-full ring-1">
+        <svg viewBox="0 0 24 24" className="text-danger size-6" aria-hidden>
           <path d="M12 7v6m0 4h.01" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
         </svg>
       </div>
-      <p className="font-display text-petal mt-5 text-lg font-semibold">{title}</p>
-      {children && <div className="text-petal-72 mt-2 max-w-sm text-sm">{children}</div>}
+      <p className="font-display text-fg mt-5 text-lg font-semibold">{title}</p>
+      {children && <div className="text-fg-muted mt-2 max-w-sm text-sm">{children}</div>}
       {action && <div className="mt-6">{action}</div>}
     </div>
   );
@@ -58,7 +58,7 @@ export function ErrorState({ title, children, action, className }: StateProps) {
 export function LiveDot({ className }: { className?: string }) {
   return (
     <span
-      className={cn('cc-live-dot bg-plum inline-block size-2 rounded-full', className)}
+      className={cn('cc-live-dot bg-accent-strong inline-block size-2 rounded-full', className)}
       aria-hidden
     />
   );

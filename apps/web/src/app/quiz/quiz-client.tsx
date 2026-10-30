@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { AnimatedNumber, Button, ButtonLink, ChaiCup, Checkbox, LiveDot, cn } from '@chai/ui';
+import { AnimatedNumber, Button, ChaiCup, Checkbox, LiveDot, cn } from '@chai/ui';
 import { IdentityFields } from '@/components/identity-fields';
 import { joinQuizAction } from './actions';
 
@@ -14,8 +14,6 @@ interface Me {
   dqReason: string | null;
   answered: number;
   total: number;
-  score: number | null;
-  rank: number | null;
 }
 
 interface State {
@@ -25,9 +23,8 @@ interface State {
   joinedCount: number;
   serverNow: number;
   me: Me | null;
-  results:
-    | { body: string; correct: string; yours: string | null; gotIt: boolean; points: number }[]
-    | null;
+  /** Answer key after the end, if the admins allow it. Students never see scores or ranks. */
+  results: { body: string; correct: string }[] | null;
   /** Local clock time the countdown hits zero, computed when the poll arrives. */
   startsAtLocal: number;
 }
@@ -44,7 +41,7 @@ interface Question {
 
 type Next =
   | { kind: 'question'; question: Question }
-  | { kind: 'done'; score: number }
+  | { kind: 'done' }
   | { kind: 'disqualified'; reason: string }
   | { kind: 'waiting' };
 
@@ -65,7 +62,7 @@ export function QuizClient() {
   const offset = useRef(0);
   const [question, setQuestion] = useState<Question | null>(null);
   const [final, setFinal] = useState<
-    { kind: 'done'; score: number } | { kind: 'disqualified'; reason: string } | null
+    { kind: 'done' } | { kind: 'disqualified'; reason: string } | null
   >(null);
   const fetchingNext = useRef(false);
 
@@ -166,7 +163,7 @@ export function QuizClient() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -40, opacity: 0 }}
             role="status"
-            className="bg-coral text-ink fixed inset-x-0 top-0 z-50 py-2 text-center text-sm font-semibold"
+            className="bg-danger-soft text-fg fixed inset-x-0 top-0 z-50 py-2 text-center text-sm font-semibold"
           >
             Reconnecting… stay on this page.
           </motion.div>
@@ -178,14 +175,14 @@ export function QuizClient() {
           <Screen key="locked">
             <ChaiCup className="h-16 w-auto" steam={false} />
             <h2 className="font-display text-3xl font-bold">The quiz isn’t open yet.</h2>
-            <p className="text-petal-72">
+            <p className="text-fg-muted">
               It opens on the auditorium screen. This page updates by itself.
             </p>
           </Screen>
         ) : dq ? (
           <Screen key="dq">
-            <h2 className="font-display text-coral text-3xl font-bold">Disqualified</h2>
-            <p className="text-petal-72">
+            <h2 className="font-display text-danger text-3xl font-bold">Disqualified</h2>
+            <p className="text-fg-muted">
               {final?.kind === 'disqualified' ? final.reason : me?.dqReason}. If this was a mistake
               (a phone call, a dead battery), tell an admin at the desk; they can reinstate you with
               the answers you already gave.
@@ -197,7 +194,7 @@ export function QuizClient() {
           ) : (
             <Screen key="closed">
               <h2 className="font-display text-3xl font-bold">Joining has closed.</h2>
-              <p className="text-petal-72">
+              <p className="text-fg-muted">
                 This round is already running. Watch the big screen for the next one.
               </p>
             </Screen>
@@ -223,13 +220,9 @@ export function QuizClient() {
         ) : (
           <Screen key="done">
             <ChaiCup className="h-16 w-auto" />
-            <h2 className="font-display text-3xl font-bold">Done!</h2>
-            <p className="text-petal-72">
-              You scored{' '}
-              <span className="text-petal font-mono">
-                <AnimatedNumber value={final?.kind === 'done' ? final.score : (me.score ?? 0)} />
-              </span>
-              . Your rank goes up on the big screen when the quiz ends.
+            <h2 className="font-display text-3xl font-bold">All answers in.</h2>
+            <p className="text-fg-muted">
+              Nicely done. Winners are announced on the big screen when the quiz ends.
             </p>
           </Screen>
         )}
@@ -245,7 +238,7 @@ function Screen({ children }: { children: React.ReactNode }) {
       animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
       exit={{ opacity: 0, y: -12, filter: 'blur(6px)' }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-      className="border-petal-12 text-petal flex flex-col items-start gap-4 border-t pt-10"
+      className="border-line text-fg flex flex-col items-start gap-4 border-t pt-10"
     >
       {children}
     </motion.div>
@@ -254,7 +247,7 @@ function Screen({ children }: { children: React.ReactNode }) {
 
 function QuizSkeleton() {
   return (
-    <div className="border-petal-12 flex flex-col gap-4 border-t pt-10" aria-busy>
+    <div className="border-line flex flex-col gap-4 border-t pt-10" aria-busy>
       <div className="cc-skeleton h-10 w-2/3 rounded-xl" />
       <div className="cc-skeleton h-5 w-1/2 rounded-lg" />
       <div className="cc-skeleton mt-4 h-14 w-full rounded-2xl" />
@@ -274,7 +267,7 @@ function JoinForm({ title, onJoined }: { title: string | null; onJoined: () => v
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
-      className="border-petal-12 flex flex-col gap-8 border-t pt-10"
+      className="border-line flex flex-col gap-8 border-t pt-10"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -299,13 +292,13 @@ function JoinForm({ title, onJoined }: { title: string | null; onJoined: () => v
         onDepartment={setDepartment}
         errors={errors}
       />
-      <div className="bg-prussian ring-grape flex flex-col gap-3 rounded-3xl p-5 ring-1 sm:p-6">
-        <p className="font-display text-petal font-semibold">Before you join</p>
-        <ul className="text-petal-72 marker:text-plum flex list-disc flex-col gap-1.5 pl-5 text-[0.95rem]">
+      <div className="bg-surface ring-edge flex flex-col gap-3 rounded-3xl p-5 ring-1 sm:p-6">
+        <p className="font-display text-fg font-semibold">Before you join</p>
+        <ul className="text-fg-muted marker:text-accent-strong flex list-disc flex-col gap-1.5 pl-5 text-[0.95rem]">
           <li>One question at a time, each on a timer.</li>
           <li>Your answer locks the moment you tap it. No going back.</li>
           <li>Leaving this tab, reloading or going offline disqualifies you.</li>
-          <li>Faster right answers score more. Wrong answers score nothing.</li>
+          <li>Be quick: speed counts.</li>
         </ul>
         <div className="mt-2">
           <Checkbox checked={accept} onChange={setAccept} invalid={Boolean(errors.acceptRules)}>
@@ -314,7 +307,7 @@ function JoinForm({ title, onJoined }: { title: string | null; onJoined: () => v
         </div>
       </div>
       {formError && (
-        <p role="alert" className="text-coral text-sm font-medium">
+        <p role="alert" className="text-danger text-sm font-medium">
           {formError}
         </p>
       )}
@@ -330,20 +323,22 @@ function WaitingRoom({ state }: { state: State }) {
     <Screen>
       <div className="flex items-center gap-3">
         <LiveDot />
-        <span className="text-plum text-sm font-semibold">You’re in as {state.me?.rollNo}</span>
+        <span className="text-accent-strong text-sm font-semibold">
+          You’re in as {state.me?.rollNo}
+        </span>
       </div>
       <h2 className="font-display text-[clamp(2rem,8vw,3.5rem)] leading-[0.95] font-black tracking-tight">
         Waiting for the go signal.
       </h2>
-      <p className="text-petal-72 max-w-md">
+      <p className="text-fg-muted max-w-md">
         Keep this page open and your screen on. The countdown starts on everyone’s phone at the same
         moment.
       </p>
       <div className="mt-6 flex items-baseline gap-3">
-        <span className="text-petal tabular font-mono text-6xl font-bold">
+        <span className="text-fg tabular font-mono text-6xl font-bold">
           <AnimatedNumber value={state.joinedCount} />
         </span>
-        <span className="text-petal-72">players in the room</span>
+        <span className="text-fg-muted">players in the room</span>
       </div>
       <SteamRoom />
     </Screen>
@@ -381,7 +376,7 @@ function Countdown({ startsAt }: { startsAt: number }) {
           animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }}
           exit={{ scale: 0.6, opacity: 0, filter: 'blur(10px)' }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="font-display text-plum tabular text-[clamp(9rem,45vw,16rem)] leading-none font-black"
+          className="font-display text-accent-strong tabular text-[clamp(9rem,45vw,16rem)] leading-none font-black"
           aria-live="assertive"
         >
           {n}
@@ -448,33 +443,30 @@ function QuestionCard({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: -60, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-      className="bg-prussian ring-grape relative overflow-hidden rounded-[28px] p-5 ring-1 sm:p-8"
+      className="bg-surface ring-edge relative overflow-hidden rounded-[28px] p-5 ring-1 sm:p-8"
       aria-label={`Question ${question.index + 1} of ${question.total}`}
     >
       <Watermark text={rollNo} />
       <div className="relative flex items-center justify-between text-sm">
-        <span className="text-petal-72 font-semibold">
+        <span className="text-fg-muted font-semibold">
           {question.index + 1} / {question.total}
         </span>
         <span
-          className={cn(
-            'tabular font-mono font-bold',
-            fraction < 0.25 ? 'text-coral' : 'text-petal',
-          )}
+          className={cn('tabular font-mono font-bold', fraction < 0.25 ? 'text-danger' : 'text-fg')}
         >
           {Math.ceil(left / 1000)}s
         </span>
       </div>
-      <div className="bg-petal-12 relative mt-3 h-1.5 overflow-hidden rounded-full">
+      <div className="bg-line relative mt-3 h-1.5 overflow-hidden rounded-full">
         <div
           className={cn(
             'h-full origin-left rounded-full transition-[transform] duration-100 ease-linear',
-            fraction < 0.25 ? 'bg-coral' : 'bg-plum',
+            fraction < 0.25 ? 'bg-danger-soft' : 'bg-accent',
           )}
           style={{ transform: `scaleX(${Math.max(fraction, 0)})` }}
         />
       </div>
-      <h2 className="font-display text-petal relative mt-7 text-[clamp(1.4rem,5.5vw,2.2rem)] leading-tight font-bold text-balance">
+      <h2 className="font-display text-fg relative mt-7 text-[clamp(1.4rem,5.5vw,2.2rem)] leading-tight font-bold text-balance">
         {question.body}
       </h2>
       <div className="relative mt-7 grid gap-3">
@@ -491,14 +483,14 @@ function QuestionCard({
               className={cn(
                 'flex min-h-16 items-center gap-4 rounded-2xl px-5 py-4 text-left text-[1.05rem] font-semibold ring-1 transition-colors ring-inset',
                 isPicked
-                  ? 'bg-plum text-ink ring-plum'
-                  : 'bg-ink-2 text-petal ring-grape hover:ring-plum active:bg-plum-16',
+                  ? 'bg-accent text-fg ring-accent-strong'
+                  : 'bg-surface-2 text-fg ring-edge hover:ring-accent-strong active:bg-accent-soft',
               )}
             >
               <span
                 className={cn(
                   'grid size-8 shrink-0 place-items-center rounded-full font-mono text-sm',
-                  isPicked ? 'bg-ink text-plum' : 'bg-petal-06 text-petal-72',
+                  isPicked ? 'bg-ink text-plum' : 'bg-wash text-fg-muted',
                 )}
               >
                 {String.fromCharCode(65 + i)}
@@ -531,7 +523,7 @@ function Watermark({ text }: { text: string }) {
       className="pointer-events-none absolute -inset-20 flex rotate-[-24deg] flex-wrap content-center gap-x-10 gap-y-8 opacity-[0.07]"
     >
       {Array.from({ length: 40 }).map((_, i) => (
-        <span key={i} className="text-petal font-mono text-lg font-bold">
+        <span key={i} className="text-fg font-mono text-lg font-bold">
           {text}
         </span>
       ))}
@@ -540,51 +532,30 @@ function Watermark({ text }: { text: string }) {
 }
 
 function Results({ state }: { state: State }) {
-  const me = state.me;
   return (
     <Screen>
       <h2 className="font-display text-[clamp(2rem,8vw,3.5rem)] leading-[0.95] font-black tracking-tight">
         That’s the quiz.
       </h2>
-      {me && me.status !== 'disqualified' && (
-        <div className="mt-2 flex flex-wrap items-end gap-10">
-          <div>
-            <p className="text-petal-72 text-sm">Score</p>
-            <p className="text-plum tabular font-mono text-5xl font-bold">
-              <AnimatedNumber value={me.score ?? 0} />
-            </p>
-          </div>
-          {me.rank && (
-            <div>
-              <p className="text-petal-72 text-sm">Rank</p>
-              <p className="text-petal tabular font-mono text-5xl font-bold">#{me.rank}</p>
-            </div>
-          )}
-        </div>
-      )}
+      <p className="text-fg-muted max-w-md">
+        Thanks for playing. Winners are announced on the auditorium screen.
+      </p>
       {state.results && (
-        <ol className="border-petal-12 mt-6 w-full border-t">
-          {state.results.map((r, i) => (
-            <li key={i} className="border-petal-12 flex flex-col gap-1 border-b py-4">
-              <span className="text-petal font-semibold">{r.body}</span>
-              <span className="text-petal-72 text-sm">
-                Answer: <span className="text-mint">{r.correct}</span>
-                {!r.gotIt && (
-                  <>
-                    {' '}
-                    · You: <span className="text-coral">{r.yours ?? 'no answer'}</span>
-                  </>
-                )}
-                {r.gotIt && <span className="text-petal font-mono"> · +{r.points}</span>}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
-      {!me && (
-        <ButtonLink href="/leaderboard" variant="secondary">
-          See the leaderboard
-        </ButtonLink>
+        <section className="mt-4 w-full" aria-labelledby="answer-key">
+          <h3 id="answer-key" className="font-display text-fg text-lg font-bold">
+            The answers
+          </h3>
+          <ol className="border-line mt-3 border-t">
+            {state.results.map((r, i) => (
+              <li key={i} className="border-line flex flex-col gap-1 border-b py-4">
+                <span className="text-fg font-semibold">{r.body}</span>
+                <span className="text-fg-muted text-sm">
+                  Answer: <span className="text-fg font-medium">{r.correct}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
     </Screen>
   );

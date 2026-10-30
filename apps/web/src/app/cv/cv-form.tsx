@@ -75,12 +75,12 @@ export function CvForm({ companies }: { companies: string[] }) {
         initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="border-petal-12 flex flex-col items-start gap-5 border-t pt-10"
+        className="border-line flex flex-col items-start gap-5 border-t pt-10"
       >
         <ChaiCup className="h-20 w-auto" />
-        <h2 className="font-display text-petal text-3xl font-bold">CV received.</h2>
-        <p className="text-petal-72 max-w-md">
-          <span className="text-petal font-mono">{done}</span> is in. An admin reviews it before it
+        <h2 className="font-display text-fg text-3xl font-bold">CV received.</h2>
+        <p className="text-fg-muted max-w-md">
+          <span className="text-fg font-mono">{done}</span> is in. An admin reviews it before it
           reaches partner companies. To replace it later, visit the registration desk.
         </p>
         <ButtonLink href="/" variant="secondary">
@@ -108,7 +108,7 @@ export function CvForm({ companies }: { companies: string[] }) {
       />
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="text-petal mb-3 text-sm font-semibold">Consider my CV for</legend>
+        <legend className="text-fg mb-3 text-sm font-semibold">Consider my CV for</legend>
         <div className="flex flex-wrap gap-2">
           {companies.map((c) => (
             <ChoiceChip
@@ -143,7 +143,7 @@ export function CvForm({ companies }: { companies: string[] }) {
       </fieldset>
 
       <div className="flex flex-col gap-2">
-        <span className="text-petal text-sm font-semibold">Your CV</span>
+        <span className="text-fg text-sm font-semibold">Your CV</span>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -157,10 +157,10 @@ export function CvForm({ companies }: { companies: string[] }) {
           className={cn(
             'group relative flex min-h-36 w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border-[1.5px] border-dashed px-6 py-8 text-center transition-colors duration-200',
             dragging
-              ? 'border-plum bg-plum-16'
+              ? 'border-accent-strong bg-accent-soft'
               : errors.file
-                ? 'border-coral'
-                : 'border-grape hover:border-plum',
+                ? 'border-danger'
+                : 'border-edge hover:border-accent-strong',
           )}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -172,9 +172,10 @@ export function CvForm({ companies }: { companies: string[] }) {
                 exit={{ opacity: 0, y: -8 }}
                 className="flex flex-col items-center gap-1"
               >
-                <span className="font-display text-petal text-lg font-semibold">{file.name}</span>
-                <span className="text-petal-72 text-sm">
-                  {formatSize(file.size)} · <span className="text-plum underline">Change file</span>
+                <span className="font-display text-fg text-lg font-semibold">{file.name}</span>
+                <span className="text-fg-muted text-sm">
+                  {formatSize(file.size)} ·{' '}
+                  <span className="text-accent-strong underline">Change file</span>
                 </span>
               </motion.span>
             ) : (
@@ -185,7 +186,7 @@ export function CvForm({ companies }: { companies: string[] }) {
                 exit={{ opacity: 0, y: -8 }}
                 className="flex flex-col items-center gap-1"
               >
-                <svg viewBox="0 0 24 24" className="text-plum mb-1 size-8" aria-hidden>
+                <svg viewBox="0 0 24 24" className="text-accent-strong mb-1 size-8" aria-hidden>
                   <path
                     d="M12 16V4m0 0 4.5 4.5M12 4 7.5 8.5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"
                     stroke="currentColor"
@@ -195,10 +196,8 @@ export function CvForm({ companies }: { companies: string[] }) {
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="font-display text-petal text-lg font-semibold">
-                  Choose your PDF
-                </span>
-                <span className="text-petal-72 text-sm">or drop it here</span>
+                <span className="font-display text-fg text-lg font-semibold">Choose your PDF</span>
+                <span className="text-fg-muted text-sm">or drop it here</span>
               </motion.span>
             )}
           </AnimatePresence>
@@ -213,14 +212,14 @@ export function CvForm({ companies }: { companies: string[] }) {
         />
         <p
           id="cv-file-help"
-          className={cn('text-sm', errors.file ? 'text-coral font-medium' : 'text-petal-72')}
+          className={cn('text-sm', errors.file ? 'text-danger font-medium' : 'text-fg-muted')}
           role={errors.file ? 'alert' : undefined}
         >
           {errors.file ?? 'PDF only, up to 4 MB and 3 pages.'}
         </p>
       </div>
 
-      <div className="border-petal-12 flex flex-col gap-4 border-t pt-7">
+      <div className="border-line flex flex-col gap-4 border-t pt-7">
         <Checkbox
           checked={consentShare}
           onChange={setConsentShare}
@@ -229,18 +228,18 @@ export function CvForm({ companies }: { companies: string[] }) {
           Share my CV with Chai Connect partner companies.
         </Checkbox>
         {errors.consentShare && (
-          <p className="text-coral -mt-2 pl-8 text-sm font-medium">{errors.consentShare}</p>
+          <p className="text-danger -mt-2 pl-8 text-sm font-medium">{errors.consentShare}</p>
         )}
         <Checkbox checked={consentDisplay} onChange={setConsentDisplay}>
           Show a summary on the event screen: department and skills only, never my name.
         </Checkbox>
-        <p className="text-petal-72 pl-8 text-sm">
+        <p className="text-fg-muted pl-8 text-sm">
           CVs are screened by an AI tool for moderation and deleted 60 days after the event.
         </p>
       </div>
 
       {formError && (
-        <p role="alert" className="text-coral text-sm font-medium">
+        <p role="alert" className="text-danger text-sm font-medium">
           {formError}
         </p>
       )}

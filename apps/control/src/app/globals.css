@@ -11,16 +11,28 @@
 }
 
 .cc-stage[data-projector='true'] {
-  --cc-ink: #03254e;
-  --cc-ink-2: #0a2f5c;
-  --cc-prussian: #0d3a70;
-  --cc-petal-72: rgb(254 206 233 / 0.88);
+  /* Projectors wash out pale tints: white page, deeper text tones. */
+  --cc-canvas: var(--cc-white);
+  --cc-surface-2: color-mix(in srgb, var(--cc-petal) 30%, var(--cc-white));
+  --cc-fg-muted: rgb(1 28 39 / 0.88);
+  --cc-fg-subtle: rgb(1 28 39 / 0.78);
+  --cc-edge: rgb(84 86 119 / 0.45);
 }
 
+/* Soft pools of Petal and Plum light on the canvas behind the display. */
 .cc-night {
   background:
-    radial-gradient(70em 50em at 100% 0%, rgb(3 37 78 / 0.95), transparent 60%),
-    radial-gradient(50em 40em at 0% 100%, rgb(235 159 239 / 0.08), transparent 70%), var(--cc-ink);
+    radial-gradient(
+      70em 50em at 100% 0%,
+      color-mix(in srgb, var(--cc-petal) 70%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      50em 40em at 0% 100%,
+      color-mix(in srgb, var(--cc-plum) 22%, transparent),
+      transparent 70%
+    ),
+    var(--cc-canvas);
 }
 
 @keyframes cc-scroll-up {

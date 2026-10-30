@@ -59,8 +59,8 @@ export function QuizEditor({ quizzes, control, joined, disqualified }: Props) {
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-petal text-4xl font-black tracking-tight">Quiz</h1>
-          <p className="text-petal-72 mt-1 text-sm">
+          <h1 className="font-display text-fg text-4xl font-black tracking-tight">Quiz</h1>
+          <p className="text-fg-muted mt-1 text-sm">
             Build quizzes here; unlock and start them here or from the display.
           </p>
         </div>
@@ -85,18 +85,18 @@ export function QuizEditor({ quizzes, control, joined, disqualified }: Props) {
                   className={cn(
                     'flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ring-1 transition-colors',
                     q.id === quiz?.id
-                      ? 'bg-prussian-2 ring-plum'
-                      : 'bg-prussian ring-grape hover:ring-petal-50',
+                      ? 'bg-surface-2 ring-accent-strong'
+                      : 'bg-surface ring-edge hover:ring-fg-subtle',
                   )}
                 >
                   <span className="min-w-0">
-                    <span className="text-petal block truncate font-semibold">{q.title}</span>
-                    <span className="text-petal-72 text-xs">
+                    <span className="text-fg block truncate font-semibold">{q.title}</span>
+                    <span className="text-fg-muted text-xs">
                       {q.questions.length} questions{q.ranAt ? ' · has run' : ''}
                     </span>
                   </span>
                   {control.quizId === q.id && control.phase !== 'locked' && (
-                    <span className="bg-plum text-ink rounded-full px-2 py-0.5 text-xs font-bold capitalize">
+                    <span className="bg-accent text-fg rounded-full px-2 py-0.5 text-xs font-bold capitalize">
                       {control.phase}
                     </span>
                   )}
@@ -140,7 +140,7 @@ export function QuizEditor({ quizzes, control, joined, disqualified }: Props) {
             pending={pending}
           />
         ) : (
-          <div className="bg-prussian ring-grape rounded-[24px] ring-1">
+          <div className="bg-surface ring-edge rounded-[24px] ring-1">
             <EmptyState title="No quizzes yet.">
               Create one on the left, then add questions or paste a CSV.
             </EmptyState>
@@ -180,12 +180,12 @@ function QuizBody({
   return (
     <section className="flex flex-col gap-6">
       {locked && (
-        <p className="bg-plum-16 text-petal ring-plum/40 rounded-2xl px-4 py-3 text-sm font-semibold ring-1">
+        <p className="bg-accent-soft text-fg ring-accent-strong/40 rounded-2xl px-4 py-3 text-sm font-semibold ring-1">
           This quiz is open or live, so questions are read-only. Lock it to edit.
         </p>
       )}
 
-      <div className="bg-prussian ring-grape flex flex-col gap-5 rounded-[24px] p-6 ring-1">
+      <div className="bg-surface ring-edge flex flex-col gap-5 rounded-[24px] p-6 ring-1">
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Title" className="min-w-0 flex-1">
             {({ id }) => (
@@ -224,13 +224,13 @@ function QuizBody({
           {quiz.ranAt && (
             <a
               href={`/admin/quiz/export?quiz=${quiz.id}`}
-              className="text-plum ring-grape hover:ring-plum inline-flex h-11 items-center rounded-full px-5 text-sm font-semibold ring-1"
+              className="text-accent-strong ring-edge hover:ring-accent-strong inline-flex h-11 items-center rounded-full px-5 text-sm font-semibold ring-1"
             >
               Export results
             </a>
           )}
         </div>
-        <div className="border-petal-12 grid gap-5 border-t pt-5 md:grid-cols-2">
+        <div className="border-line grid gap-5 border-t pt-5 md:grid-cols-2">
           <Switch
             checked={quiz.settings.shuffleQuestions}
             disabled={locked}
@@ -278,7 +278,7 @@ function QuizBody({
       </div>
 
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-petal text-2xl font-bold">
+        <h2 className="font-display text-fg text-2xl font-bold">
           {quiz.questions.length} questions
         </h2>
         <div className="flex gap-2">
@@ -312,7 +312,7 @@ function QuizBody({
       </AnimatePresence>
 
       {quiz.questions.length === 0 && editing !== 'new' ? (
-        <div className="bg-prussian ring-grape rounded-[24px] ring-1">
+        <div className="bg-surface ring-edge rounded-[24px] ring-1">
           <EmptyState title="No questions yet.">
             Add one, or paste a CSV: question, options…, correct number, seconds.
           </EmptyState>
@@ -347,10 +347,10 @@ function QuizBody({
                     onClose={() => setEditing(null)}
                   />
                 ) : (
-                  <div className="bg-prussian ring-grape flex items-start gap-4 rounded-2xl p-4 ring-1">
+                  <div className="bg-surface ring-edge flex items-start gap-4 rounded-2xl p-4 ring-1">
                     <span
                       className={cn(
-                        'text-petal-50 mt-0.5 font-mono text-sm',
+                        'text-fg-subtle mt-0.5 font-mono text-sm',
                         !locked && 'cursor-grab active:cursor-grabbing',
                       )}
                       aria-hidden
@@ -358,7 +358,7 @@ function QuizBody({
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col gap-2">
-                      <p className="text-petal font-semibold">{q.body}</p>
+                      <p className="text-fg font-semibold">{q.body}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {q.options.map((o) => (
                           <span
@@ -366,15 +366,15 @@ function QuizBody({
                             className={cn(
                               'rounded-full px-2.5 py-0.5 text-xs ring-1',
                               o.id === q.correctOptionId
-                                ? 'text-mint ring-mint/50 font-bold'
-                                : 'text-petal-72 ring-grape',
+                                ? 'text-ok ring-ok/50 font-bold'
+                                : 'text-fg-muted ring-edge',
                             )}
                           >
                             {o.text}
                           </span>
                         ))}
                       </div>
-                      <p className="text-petal-50 font-mono text-xs">
+                      <p className="text-fg-subtle font-mono text-xs">
                         {q.timeLimitS}s · {q.points} pts
                       </p>
                     </div>
@@ -450,7 +450,7 @@ function QuestionForm({
           onClose,
         );
       }}
-      className="bg-prussian-2 ring-plum grid gap-6 rounded-[24px] p-6 ring-1 lg:grid-cols-[minmax(0,1fr)_15rem]"
+      className="bg-surface-2 ring-accent-strong grid gap-6 rounded-[24px] p-6 ring-1 lg:grid-cols-[minmax(0,1fr)_15rem]"
     >
       <div className="flex flex-col gap-4">
         <Field label="Question">
@@ -466,7 +466,7 @@ function QuestionForm({
           )}
         </Field>
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-petal mb-2 text-sm font-semibold">
+          <legend className="text-fg mb-2 text-sm font-semibold">
             Options (tap the circle for the correct one)
           </legend>
           {options.map((o, i) => (
@@ -479,10 +479,10 @@ function QuestionForm({
                 onClick={() => setCorrect(o.id)}
                 className={cn(
                   'grid size-7 shrink-0 place-items-center rounded-full ring-2 ring-inset',
-                  correct === o.id ? 'bg-mint ring-mint' : 'ring-grape hover:ring-petal-50',
+                  correct === o.id ? 'bg-ok-soft ring-ok' : 'ring-edge hover:ring-fg-subtle',
                 )}
               >
-                {correct === o.id && <span className="bg-ink size-2.5 rounded-full" />}
+                {correct === o.id && <span className="bg-canvas size-2.5 rounded-full" />}
               </button>
               <Input
                 value={o.text}
@@ -501,7 +501,7 @@ function QuestionForm({
                   type="button"
                   aria-label={`Remove option ${i + 1}`}
                   onClick={() => setOptions(options.filter((x) => x.id !== o.id))}
-                  className="text-petal-72 hover:text-coral grid size-9 shrink-0 place-items-center rounded-full"
+                  className="text-fg-muted hover:text-danger grid size-9 shrink-0 place-items-center rounded-full"
                 >
                   <svg viewBox="0 0 24 24" className="size-4">
                     <path
@@ -573,21 +573,21 @@ function PhonePreview({ body, options, time }: { body: string; options: string[]
   return (
     <div
       aria-label="Phone preview"
-      className="bg-ink ring-grape mx-auto w-60 self-start rounded-[2.2rem] p-3 ring-1"
+      className="bg-canvas ring-edge mx-auto w-60 self-start rounded-[2.2rem] p-3 ring-1"
     >
-      <div className="bg-prussian flex flex-col gap-3 rounded-[1.6rem] p-4">
-        <div className="text-petal-72 flex justify-between text-[10px]">
+      <div className="bg-surface flex flex-col gap-3 rounded-[1.6rem] p-4">
+        <div className="text-fg-muted flex justify-between text-[10px]">
           <span>1 / 10</span>
-          <span className="text-petal font-mono font-bold">{time}s</span>
+          <span className="text-fg font-mono font-bold">{time}s</span>
         </div>
-        <div className="bg-plum h-1 rounded-full" />
-        <p className="font-display text-petal text-sm leading-snug font-bold">
+        <div className="bg-accent h-1 rounded-full" />
+        <p className="font-display text-fg text-sm leading-snug font-bold">
           {body || 'Your question'}
         </p>
         {options.map((o, i) => (
           <div
             key={i}
-            className="bg-ink-2 text-petal ring-grape rounded-xl px-3 py-2 text-xs font-semibold ring-1"
+            className="bg-surface-2 text-fg ring-edge rounded-xl px-3 py-2 text-xs font-semibold ring-1"
           >
             {o || `Option ${i + 1}`}
           </div>
@@ -607,10 +607,10 @@ function ImportBox({ quizId, run, onDone }: { quizId: string; run: Runner; onDon
       exit={{ opacity: 0, height: 0 }}
       className="overflow-hidden"
     >
-      <div className="bg-prussian ring-grape flex flex-col gap-3 rounded-[24px] p-6 ring-1">
-        <p className="text-petal-72 text-sm">
+      <div className="bg-surface ring-edge flex flex-col gap-3 rounded-[24px] p-6 ring-1">
+        <p className="text-fg-muted text-sm">
           One question per line:{' '}
-          <span className="text-petal font-mono">
+          <span className="text-fg font-mono">
             question, option 1, option 2, …, correct number, seconds
           </span>
           . Or paste a JSON array. Nothing is saved until every row is valid.
@@ -623,7 +623,7 @@ function ImportBox({ quizId, run, onDone }: { quizId: string; run: Runner; onDon
           aria-label="Questions to import"
         />
         {errors.length > 0 && (
-          <ul className="text-coral flex flex-col gap-1 text-sm" role="alert">
+          <ul className="text-danger flex flex-col gap-1 text-sm" role="alert">
             {errors.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -685,13 +685,13 @@ function LiveControl({
     <section
       className={cn(
         'flex flex-col gap-4 rounded-[24px] p-6 ring-1',
-        live ? 'bg-plum text-ink ring-plum' : 'bg-prussian text-petal ring-grape',
+        live ? 'bg-accent text-fg ring-accent-strong' : 'bg-surface text-fg ring-edge',
       )}
       aria-label="Live control"
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className={cn('text-sm font-semibold', live ? 'text-ink/70' : 'text-petal-72')}>
+          <p className={cn('text-sm font-semibold', live ? 'text-fg/70' : 'text-fg-muted')}>
             Live control
           </p>
           <p className="font-display text-2xl font-bold capitalize">
@@ -713,7 +713,7 @@ function LiveControl({
           {control.phase === 'open' && (
             <>
               <Button
-                className="bg-ink text-plum hover:bg-prussian"
+                className="bg-canvas text-accent-strong hover:bg-surface"
                 loading={pending}
                 onClick={() => act('start')}
               >
@@ -721,7 +721,7 @@ function LiveControl({
               </Button>
               <Button
                 variant="ghost"
-                className="text-ink hover:bg-ink/10"
+                className="text-fg hover:bg-canvas/10"
                 onClick={() => act('lock')}
               >
                 Lock again
@@ -730,7 +730,7 @@ function LiveControl({
           )}
           {(control.phase === 'live' || control.phase === 'countdown') && (
             <Button
-              className="bg-ink text-coral hover:bg-prussian"
+              className="bg-canvas text-danger hover:bg-surface"
               loading={pending}
               onClick={() => act('end')}
             >
@@ -739,7 +739,7 @@ function LiveControl({
           )}
           {control.phase === 'ended' && (
             <Button
-              className="bg-ink text-plum hover:bg-prussian"
+              className="bg-canvas text-accent-strong hover:bg-surface"
               loading={pending}
               onClick={() => act('lock')}
             >
@@ -750,10 +750,7 @@ function LiveControl({
       </div>
       {disqualified.length > 0 && (
         <div
-          className={cn(
-            'flex flex-col gap-2 border-t pt-4',
-            live ? 'border-ink/15' : 'border-petal-12',
-          )}
+          className={cn('flex flex-col gap-2 border-t pt-4', live ? 'border-fg/15' : 'border-line')}
         >
           <p className="text-sm font-semibold">Disqualified ({disqualified.length})</p>
           <ul className="flex flex-col gap-1.5">

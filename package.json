@@ -21,6 +21,7 @@
     "bootstrap:superadmin": "tsx --conditions=react-server scripts/bootstrap-superadmin.ts",
     "seed:demo": "tsx --conditions=react-server scripts/seed-demo.ts",
     "data:reset": "tsx --conditions=react-server scripts/reset-data.ts",
+    "drive:connect": "tsx scripts/drive-connect.ts",
     "dev:code": "tsx --conditions=react-server scripts/dev-code.ts"
   },
   "devDependencies": {

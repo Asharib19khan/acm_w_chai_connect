@@ -7,7 +7,7 @@ export function PageIntro({ title, children }: { title: string; children?: React
     <div className="mb-10 sm:mb-14">
       <Link
         href="/"
-        className="text-petal-72 hover:text-petal mb-8 inline-flex items-center gap-2 rounded-full text-sm transition-colors"
+        className="text-fg-muted hover:text-fg mb-8 inline-flex items-center gap-2 rounded-full text-sm transition-colors"
       >
         <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
           <path
@@ -21,11 +21,11 @@ export function PageIntro({ title, children }: { title: string; children?: React
         </svg>
         Home
       </Link>
-      <h1 className="font-display text-petal text-[clamp(2.4rem,9vw,5rem)] leading-[0.92] font-black tracking-[-0.04em] text-balance">
+      <h1 className="font-display text-fg text-[clamp(2.4rem,9vw,5rem)] leading-[0.92] font-black tracking-[-0.04em] text-balance">
         {title}
       </h1>
       {children && (
-        <div className="text-petal-72 mt-5 max-w-xl text-lg leading-relaxed">{children}</div>
+        <div className="text-fg-muted mt-5 max-w-xl text-lg leading-relaxed">{children}</div>
       )}
     </div>
   );
@@ -43,10 +43,10 @@ export function PageShell({ children, wide = false }: { children: ReactNode; wid
 
 export function ClosedState({ what }: { what: string }) {
   return (
-    <div className="border-petal-12 flex flex-col items-start gap-4 border-t py-12">
+    <div className="border-line flex flex-col items-start gap-4 border-t py-12">
       <ChaiCup className="h-14 w-auto" steam={false} />
-      <p className="font-display text-petal text-2xl font-semibold">{what} closed for now.</p>
-      <p className="text-petal-72 max-w-md">
+      <p className="font-display text-fg text-2xl font-semibold">{what} closed for now.</p>
+      <p className="text-fg-muted max-w-md">
         Check the auditorium screen or the moving strip at the top for when it opens.
       </p>
     </div>

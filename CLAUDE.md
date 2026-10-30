@@ -34,8 +34,11 @@ this file disagree, stop and ask.
 ## Layout
 
 ```
-apps/web        student site, /moments, /play/<game>
-apps/control    "/" auditorium display, /admin portal, /registrations portal
+apps/web        student site (no menu, no scores), /play/<game>          :3000
+apps/control    "/" auditorium display, /admin portal                     :3001
+apps/moments    Share Moments photo upload site                           :3002
+apps/desk       games desk for web team members (registrations, check-in) :3003
+                + game-station API /api/games/<slug>/{registrations,scores} (amendment A8)
 packages/ui     tokens.css, marquee, components, motion presets
 packages/core   zod schemas, roll-number rules, scoring functions, constants
 packages/db     generated types, typed queries, server-only Supabase clients
@@ -49,7 +52,7 @@ e2e/  load/  docs/
 ## Commands
 
 ```
-pnpm dev                 # both apps
+pnpm dev                 # all four sites
 pnpm build
 pnpm lint && pnpm typecheck
 pnpm test                # vitest
@@ -96,14 +99,19 @@ k6 run load/quiz.js
 - Quiz score per question: `P = c · B · (1/2 + 1/2 · (1 − t/T))`, B = 1000 by default.
   Ties: more correct, then lower total time on correct answers, then earlier join.
 - Admin login: Ctrl+Shift+1+9 (by `event.code`) or a 3 s long-press on the logo opens the box;
-  email + 6-digit TOTP; no passwords. `/admin` and `/registrations` return 404 without a session.
+  email + 6-digit TOTP; no passwords. `/admin` returns 404 without a session.
+- Games desk login: visible email + TOTP form. Role `member` works on the desk only; sessions are
+  tied to the site that created them. Never let a member session reach `apps/control`.
+- Students never see scores, points or ranks (only the display shows winners).
 
 ## Design rules
 
-- Colours only through tokens in `packages/ui/tokens.css` — no raw hex anywhere else:
-  `--cc-ink #011C27` (background) · `--cc-prussian #03254E` (surfaces) · `--cc-grape #545677`
-  (borders only, never text) · `--cc-plum #EB9FEF` (actions, links, focus) · `--cc-petal #FECEE9` (text).
-- Text on dark: Petal or Petal at 72%. Buttons: Plum fill + Ink text. Plum is never text on Petal.
+- Light theme (amendment A6). Colours only through ROLE tokens from `packages/ui/tokens.css`, never
+  raw hex elsewhere: `bg-canvas` (Petal tint page) · `bg-surface` (white cards) · `text-fg` (Ink) ·
+  `text-fg-muted` / `text-fg-subtle` · `border-line` · `ring-edge` / `ring-edge-strong` (Grape) ·
+  `bg-brand text-on-brand` (Prussian + Petal: primary buttons, strip) · `bg-accent` (Plum fill) ·
+  `text-accent-strong` (deep Plum, the only Plum-ish text) · `ok` / `danger` (+ `-soft` fills).
+- Plum is never text on the light canvas; use `text-accent-strong`.
 - Fonts: Unbounded (display), DM Sans (body), JetBrains Mono (roll numbers, timers, scores).
 - Animate only `transform` and `opacity`; respect `prefers-reduced-motion`.
 - Mobile-first, 44 px tap targets, WCAG 2.2 AA. Every page has loading, empty and error states.

@@ -141,16 +141,22 @@ async function requireStepUp(adminId: string, code?: string) {
 export async function createAdminAction(input: {
   name: string;
   email: string;
+  role: 'admin' | 'member';
   stepUpCode?: string;
 }): Promise<Result<Enrolment>> {
   return run(async () => {
     const actor = await requireAdmin('superadmin');
     await requireStepUp(actor.id, input.stepUpCode);
+    // 'member' = web team: games desk only, refused by this portal (amendment A7).
     const data = z
-      .object({ name: z.string().trim().min(2).max(60), email: z.email() })
+      .object({
+        name: z.string().trim().min(2).max(60),
+        email: z.email(),
+        role: z.enum(['admin', 'member']),
+      })
       .safeParse(input);
     if (!data.success) throw new UserError(firstIssue(data.error));
-    return createAdmin({ ...data.data, role: 'admin' }, actor);
+    return createAdmin(data.data, actor);
   }, '/admin/team');
 }
 

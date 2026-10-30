@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const isCI = Boolean(process.env.CI);
 
-// Student site on :3000, control app on :3001. Blueprint section 15 device set.
+// Student site :3000, display + admin :3001, moments :3002, games desk :3003. Blueprint section 15 device set.
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
@@ -30,6 +30,18 @@ export default defineConfig({
     {
       command: isCI ? 'pnpm --filter @chai/control start' : 'pnpm --filter @chai/control dev',
       url: 'http://localhost:3001',
+      reuseExistingServer: !isCI,
+      timeout: 120_000,
+    },
+    {
+      command: isCI ? 'pnpm --filter @chai/moments start' : 'pnpm --filter @chai/moments dev',
+      url: 'http://localhost:3002',
+      reuseExistingServer: !isCI,
+      timeout: 120_000,
+    },
+    {
+      command: isCI ? 'pnpm --filter @chai/desk start' : 'pnpm --filter @chai/desk dev',
+      url: 'http://localhost:3003',
       reuseExistingServer: !isCI,
       timeout: 120_000,
     },

@@ -35,7 +35,7 @@ export async function listGames(): Promise<GameWithCounts[]> {
   return [...db.games].sort((a, b) => a.sort - b.sort).map((g) => counts(db, g));
 }
 
-function passHash(code: string): string {
+export function passHash(code: string): string {
   return hmac(serverKey('DEVICE_TOKEN_KEY'), `pass:${code}`);
 }
 

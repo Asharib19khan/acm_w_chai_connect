@@ -96,6 +96,8 @@ export interface Registration {
   round: number | null;
   createdAt: string;
   checkedInAt: string | null;
+  /** Game stations: when this player's single turn was used (set at Start). Null = turn left. */
+  playClaimedAt?: string | null;
 }
 
 export interface ScoreEvent {
@@ -181,7 +183,14 @@ export interface QuizSession {
   joinedAt: string;
 }
 
-export type AdminRole = 'superadmin' | 'admin';
+/**
+ * superadmin and admin use the admin portal (apps/control). member is a webdev team member: they
+ * can sign in to the games desk (apps/desk) only, never to the admin portal.
+ */
+export type AdminRole = 'superadmin' | 'admin' | 'member';
+
+/** Which site a session was created on. A session only works on the site that created it. */
+export type SessionApp = 'control' | 'desk';
 
 export interface Admin {
   id: string;
@@ -204,6 +213,8 @@ export interface Admin {
 export interface AdminSession {
   id: string;
   adminId: string;
+  /** Missing on sessions created before the desk existed: those count as 'control'. */
+  app?: SessionApp;
   tokenHash: string;
   expiresAt: string;
   lastSeenAt: string;
@@ -238,6 +249,34 @@ export interface Settings {
   cvRetentionDays: number;
 }
 
+/** A laptop (or other device) that runs a game and reports runs to the games desk API. */
+export interface GameStation {
+  id: string;
+  gameId: string;
+  name: string;
+  /** HMAC of the station key. The key itself is shown once, at creation. */
+  keyHash: string;
+  createdBy: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+}
+
+/** One finished round reported by a station. Unmatched runs are kept so nothing is lost. */
+export interface GameRun {
+  runId: string;
+  gameId: string;
+  stationId: string;
+  rollNo: string;
+  registrationId: string | null;
+  points: number;
+  progressPercent: number | null;
+  bestAtSeconds: number | null;
+  roundSeconds: number | null;
+  playedAt: string;
+  receivedAt: string;
+}
+
 export interface Db {
   version: 1;
   settings: Settings;
@@ -247,6 +286,8 @@ export interface Db {
   games: Game[];
   registrations: Registration[];
   scoreEvents: ScoreEvent[];
+  gameStations: GameStation[];
+  gameRuns: GameRun[];
   quizzes: Quiz[];
   quizControl: QuizControl;
   quizSessions: QuizSession[];

@@ -349,8 +349,6 @@ export interface PlayerState {
     dqReason: string | null;
     answered: number;
     total: number;
-    score: number | null;
-    rank: number | null;
   };
 }
 
@@ -377,11 +375,7 @@ export async function playerState(token: string | undefined): Promise<PlayerStat
   const c = db.quizControl;
   const quiz = db.quizzes.find((q) => q.id === c.quizId);
   const session = findSession(db, token);
-  const ended = c.phase === 'ended';
-  const rank =
-    ended && session
-      ? (rankSessions(db, session.quizId).find((r) => r.id === session.id)?.rank ?? null)
-      : null;
+  // Students never see scores or ranks (28 Oct amendment A7); those stay on the big screen.
   return {
     phase: c.phase,
     quizTitle: c.phase === 'locked' ? null : (quiz?.title ?? null),
@@ -395,8 +389,6 @@ export async function playerState(token: string | undefined): Promise<PlayerStat
           dqReason: session.dqReason,
           answered: session.answers.length,
           total: session.questionOrder.length,
-          score: session.status === 'active' && !ended ? null : session.score,
-          rank,
         }
       : null,
   };
@@ -451,7 +443,7 @@ function serve(db: Db, quiz: Quiz, session: QuizSession): PlayerQuestion | null 
 
 export type NextResult =
   | { kind: 'question'; question: PlayerQuestion }
-  | { kind: 'done'; score: number }
+  | { kind: 'done' }
   | { kind: 'disqualified'; reason: string }
   | { kind: 'waiting' };
 
@@ -459,14 +451,12 @@ function nextFor(db: Db, session: QuizSession): NextResult {
   if (session.status === 'disqualified')
     return { kind: 'disqualified', reason: session.dqReason ?? 'Disqualified' };
   if (db.quizControl.phase !== 'live') {
-    return db.quizControl.phase === 'ended'
-      ? { kind: 'done', score: session.score }
-      : { kind: 'waiting' };
+    return db.quizControl.phase === 'ended' ? { kind: 'done' } : { kind: 'waiting' };
   }
   const quiz = db.quizzes.find((q) => q.id === session.quizId);
   if (!quiz) return { kind: 'waiting' };
   const question = session.status === 'active' ? serve(db, quiz, session) : null;
-  return question ? { kind: 'question', question } : { kind: 'done', score: session.score };
+  return question ? { kind: 'question', question } : { kind: 'done' };
 }
 
 export async function nextQuestion(token: string | undefined): Promise<NextResult> {
@@ -606,6 +596,7 @@ export async function reinstate(sessionId: string, actor: Actor): Promise<void> 
   });
 }
 
+/** Answer key shown to a player after the quiz ends (if the admin allows it). No points, no tally. */
 export async function resultsFor(token: string | undefined) {
   const db = await read();
   const session = findSession(db, token);
@@ -614,13 +605,9 @@ export async function resultsFor(token: string | undefined) {
     return null;
   return session.questionOrder.map((qid) => {
     const q = quiz.questions.find((x) => x.id === qid)!;
-    const a = session.answers.find((x) => x.questionId === qid);
     return {
       body: q.body,
       correct: q.options.find((o) => o.id === q.correctOptionId)?.text ?? '',
-      yours: q.options.find((o) => o.id === a?.optionId)?.text ?? null,
-      gotIt: a?.correct ?? false,
-      points: a?.points ?? 0,
     };
   });
 }

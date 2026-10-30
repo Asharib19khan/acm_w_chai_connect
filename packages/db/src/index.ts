@@ -15,3 +15,5 @@ export * from './repo/moments';
 export * from './repo/questions';
 export * from './repo/quiz';
 export * from './repo/settings';
+export * from './repo/stations';
+export * from './repo/physical';

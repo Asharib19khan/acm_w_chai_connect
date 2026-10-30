@@ -86,6 +86,81 @@ Never propose an upgrade as a fix; find a free workaround.
 - Not wired yet: Upstash (an in-memory limiter stands in), Turnstile, the Claude worker (free rule
   checks flag everything today), the Cloudflare relay and Drive (P4, P9), Realtime (screens poll).
 
+### A6. Light theme (added 28 Oct)
+
+- Same five colours, flipped: a Petal-tinted canvas (Petal 30% into white), white cards, Ink text,
+  Prussian for primary buttons and the moving strip, Plum as the accent fill, Grape for borders.
+  Plum text is replaced by Plum deepened with Ink (`--cc-accent-strong`, 5:1 on the canvas).
+- Components use role tokens (`canvas`, `surface`, `fg`, `fg-muted`, `line`, `edge`, `brand`,
+  `accent`, `ok`, `danger`), defined only in `packages/ui/tokens.css`. Section 2's dark roles are
+  replaced by these. The display's projector mode switches to a white page with deeper text tones.
+
+### A7. Four separate sites (added 28 Oct)
+
+| Site                         | Who                         | App            | Local port |
+| ---------------------------- | --------------------------- | -------------- | ---------- |
+| Student site                 | Every student (QR codes)    | `apps/web`     | 3000       |
+| Display + admin portal       | Big screen; admins          | `apps/control` | 3001       |
+| Share Moments (photo upload) | Anyone at the event, own QR | `apps/moments` | 3002       |
+| Games desk                   | ACM-W web team members      | `apps/desk`    | 3003       |
+
+- **Student site:** a startup animation (once per browser session, tap to skip, skipped on the quiz
+  and under reduced motion), no menu, no Share Moments, no leaderboard. Students never see scores,
+  points or ranks anywhere, including the quiz: the player API no longer sends them. After the quiz
+  ends, the "reveal answers" switch shows the answer key only. Winners are shown on the display.
+- **Share Moments** moved to its own site (upload only; no public gallery). Admins still review covers.
+- **Games desk** replaces `/registrations` in the control app: games, registrants, check-in, teams
+  and rounds, score entry, CSV export. Web team members sign in with email + Authenticator code on a
+  visible sign-in screen.
+- **Members never reach the admin portal.** New role `member`, created by the superadmin on the
+  Team page. Sessions record the site that created them (`control` or `desk`) and only work there;
+  the admin portal refuses member accounts at sign-in (audited as `auth.wrong_site`) and on every
+  request. Admins may also sign in to the desk, with a separate desk session.
+- Each site is its own Vercel Hobby project on a free `*.vercel.app` subdomain.
+
+### A8. Game stations: Skill Issues (added 29 Oct)
+
+- **Skill Issues** is a minigame played on a game-station laptop (a modded Unity build kept outside
+  this repo, in its own folder). Students register for it like any minigame (it counts as their one
+  minigame). The game's own folder documents its side in `source/LEADERBOARD_API.md`.
+- The games desk hosts the station API. Every request carries `Authorization: Bearer <station key>`.
+  - `GET /api/games/<slug>/registrations?rollNo=&gameSlug=` → `200 {"registered": bool}`. A player
+    may play when their registration for that game is `registered` or `checked_in`.
+  - `POST /api/games/<slug>/scores` (runId, rollNo, points 0–1000, progressPercent, bestAtSeconds,
+    roundSeconds, playedAt) → `201` stored, `409` runId already stored, `400` invalid, `401` bad key.
+- **One turn per player.** The first `registered: true` answer uses up the player's turn
+  (`registrations.play_claimed_at`). A later Start, on any laptop, gets
+  `{"registered": false, "alreadyPlayed": true}`: the game then shows "You can only replay if the
+  game crashed" and asks for the **replay secret key**. It sends the key to
+  `POST /api/games/<slug>/replays` (`{gameSlug, rollNo, secretKey}` → `200` allowed, `403` wrong key,
+  `404` not registered, `429` after 5 wrong keys for 15 minutes). The key lives only in the desk's
+  `RETRY_SECRET` env var, never on the laptop or in git. A correct key **replaces the previous
+  record**: the game drops that roll's local rounds, the website voids its station score event
+  (never edits) and the next round counts. Only a player's counted round scores; extra rounds
+  (e.g. through the offline list) are kept in `game_runs` but never count. Wrong keys and replays
+  are audited.
+- **Station keys** are created on the desk (Game station tab, minigames only), shown once, stored as
+  an HMAC, tied to one game, and revocable. The desk downloads a ready `acmw_config.json` for the
+  laptop and an offline `registered_players.txt`. Copying the game folder to another laptop by USB
+  needs nothing else; a lost laptop is handled by revoking its key. All of this is audited.
+- Supabase (P2): add `game_stations` and `game_runs` (RLS on, no grants), `unique(run_id)`.
+
+### A9. Hide & Seek game server (added 30 Oct)
+
+- Hide & Seek runs on its own game server (separate folder `Y:\hide_and_seek`, one Node process
+  on a laptop behind a free HTTPS tunnel). It links to the games desk with a station key from the
+  desk's **Game server** tab (Hide & Seek only), downloaded as `.env.local` (`CHAI_URL`, `CHAI_STATION_KEY`).
+- Station API for physical games (Bearer station key):
+  - `GET /api/games/<slug>/roster` → `{players:[{rollNo, department, status, round}]}` (registered + checked in).
+  - `POST /api/games/<slug>/login {rollNo, passCode}` → `200 {player}` · `404` not registered · `403` wrong code.
+    **Players sign in with roll number + the 6-digit pass code from registration** (replaces roll + name, since
+    registrations store no names).
+  - `POST /api/games/<slug>/checkin {rollNo}` → marks the registration `checked_in` when the phone reaches the gathering spot.
+  - `POST /api/games/<slug>/standings {totals:[{rollNo,total,detail}]}` → each player's game total (0–100):
+    the previous total's score event is voided and a new one inserted, so the display and desk leaderboards stay live.
+- Teams (matches of 20, four teams of five) are drawn by the game server when a slot closes; the desk's round
+  builder uses 20 per group for Hide & Seek.
+
 ## 1. Overview
 
 Two Next.js apps, one Supabase database and five games ship for Chai Connect on Nov 25, 2026. Websites are done by Nov 10, games by Nov 18, then a feature freeze, security testing and a full rehearsal. Ye builds with Claude Code; the 4 co-heads and their members take scoped tasks (section 17).

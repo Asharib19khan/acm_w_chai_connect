@@ -68,7 +68,7 @@ export function AskForm({ alreadyAsked, src }: { alreadyAsked: boolean; src: str
               <span
                 className={cn(
                   'tabular font-mono text-xs',
-                  left < 20 ? 'text-coral' : 'text-petal-50',
+                  left < 20 ? 'text-danger' : 'text-fg-subtle',
                 )}
                 aria-live="polite"
               >
@@ -90,7 +90,7 @@ export function AskForm({ alreadyAsked, src }: { alreadyAsked: boolean; src: str
             )}
           </Field>
 
-          <div className="border-petal-12 flex flex-col gap-4 border-t pt-6">
+          <div className="border-line flex flex-col gap-4 border-t pt-6">
             <Switch
               checked={showName}
               onChange={setShowName}
@@ -126,13 +126,13 @@ export function AskForm({ alreadyAsked, src }: { alreadyAsked: boolean; src: str
           </div>
 
           {formError && (
-            <p role="alert" className="text-coral text-sm font-medium">
+            <p role="alert" className="text-danger text-sm font-medium">
               {formError}
             </p>
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-petal-72 text-sm">One question per phone, so make it count.</p>
+            <p className="text-fg-muted text-sm">One question per phone, so make it count.</p>
             <Button
               type="submit"
               size="lg"
@@ -149,13 +149,13 @@ export function AskForm({ alreadyAsked, src }: { alreadyAsked: boolean; src: str
           initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="border-petal-12 flex flex-col items-start gap-5 border-t pt-10"
+          className="border-line flex flex-col items-start gap-5 border-t pt-10"
         >
           <ChaiCup className="h-20 w-auto" />
-          <h2 className="font-display text-petal text-3xl font-bold">
+          <h2 className="font-display text-fg text-3xl font-bold">
             {state === 'sent' ? 'Your question is in.' : 'You’ve already asked from this phone.'}
           </h2>
-          <p className="text-petal-72 max-w-md">
+          <p className="text-fg-muted max-w-md">
             {state === 'sent'
               ? 'Admins check every question before it goes on the big screen. Keep an eye on the auditorium.'
               : 'Each phone gets one question, so everyone gets a turn. Watch for yours on the big screen.'}

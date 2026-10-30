@@ -2,8 +2,13 @@
 
 Web platform for **ACM-W Chai Connect**, FAST-NUCES Karachi, 25 November 2026.
 
-- `apps/web`: student site (ask a question, CV, game registration, quiz, Share Moments, game screens)
-- `apps/control`: auditorium display (`/`), admin portal (`/admin`), registrations portal (`/registrations`)
+Four separate sites:
+
+- `apps/web` (:3000): student site (ask a question, CV, game registration, quiz). No menu, no scores.
+- `apps/control` (:3001): auditorium display (`/`) and admin portal (`/admin`)
+- `apps/moments` (:3002): Share Moments, photo upload straight to our Drive
+- `apps/desk` (:3003): games desk for web team members (registrations, check-in, scores). Members
+  can never sign in to the admin portal.
 - `packages/*`: shared UI, logic, database and moderation code
 - Spec: [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) (section 0 overrides the rest). Repo rules: [`CLAUDE.md`](CLAUDE.md).
 
@@ -15,7 +20,7 @@ Requirements: Node 22.12+ (24 recommended), pnpm 10, and Docker Desktop for the 
 
 ```sh
 pnpm install
-pnpm dev            # student site on http://localhost:3000, control app on http://localhost:3001
+pnpm dev            # all four sites on http://localhost:3000-3003
 ```
 
 Environment variables are optional locally. Copy `.env.example` to `apps/web/.env.local` and
@@ -34,7 +39,8 @@ pnpm dev
 
 - Student site: http://localhost:3000
 - Auditorium display: http://localhost:3001 (press Ctrl+Shift+1+9 to sign in)
-- Admin portal: http://localhost:3001/admin · Registrations: http://localhost:3001/registrations
+- Admin portal: http://localhost:3001/admin (add web team members on the Team page)
+- Share Moments: http://localhost:3002 · Games desk: http://localhost:3003
 - `pnpm data:reset` wipes everything (run `bootstrap:superadmin` again afterwards).
 
 ## Checks

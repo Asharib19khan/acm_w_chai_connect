@@ -177,7 +177,7 @@ export function LoginDialog({
               />
             )}
             {error && (
-              <p role="alert" className="text-coral text-sm font-medium">
+              <p role="alert" className="text-danger text-sm font-medium">
                 {error}
               </p>
             )}
@@ -191,14 +191,14 @@ export function LoginDialog({
             <div className="flex justify-between text-sm">
               <button
                 type="button"
-                className="text-petal-72 hover:text-petal"
+                className="text-fg-muted hover:text-fg"
                 onClick={() => setStep('email')}
               >
                 Change email
               </button>
               <button
                 type="button"
-                className="text-petal-72 hover:text-petal"
+                className="text-fg-muted hover:text-fg"
                 onClick={() => {
                   setRecovery(!recovery);
                   setCode('');
@@ -218,9 +218,6 @@ export function LoginDialog({
           >
             <ButtonLink href="/admin" onClick={close}>
               Open admin portal
-            </ButtonLink>
-            <ButtonLink href="/registrations" variant="secondary" onClick={close}>
-              Open registrations
             </ButtonLink>
             <Button variant="ghost" onClick={close}>
               Stay on screen

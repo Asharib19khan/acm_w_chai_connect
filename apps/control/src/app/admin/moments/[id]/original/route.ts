@@ -7,7 +7,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const file = await readMomentOriginal(id);
   if (!file) return new Response('Not found', { status: 404 });
-  const safeType = /^image\/(jpeg|png|webp|gif|heic|heif|avif)$/.test(file.moment.mime)
+  const safeType = /^(image\/(jpeg|png|webp|gif|heic|heif|avif)|video\/(mp4|quicktime|webm|3gpp))$/.test(file.moment.mime)
     ? file.moment.mime
     : 'application/octet-stream';
   return new Response(new Uint8Array(file.bytes), {
@@ -16,7 +16,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       'Content-Disposition': `inline; filename="${file.moment.fileName.replace(/[^\w.-]/g, '_')}"`,
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': "sandbox; default-src 'none'; img-src 'self'",
+      'Content-Security-Policy': "sandbox; default-src 'none'; img-src 'self'; media-src 'self'",
     },
   });
 }

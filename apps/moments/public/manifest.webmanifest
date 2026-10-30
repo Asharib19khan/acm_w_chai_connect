@@ -1,0 +1,9 @@
+{
+  "name": "Chai Connect · Moments",
+  "short_name": "Moments",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff0f8",
+  "theme_color": "#fff0f8",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

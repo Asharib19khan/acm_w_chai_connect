@@ -11,7 +11,7 @@ import {
 import { dirname, join } from 'node:path';
 import { DEFAULT_COMPANIES, DEFAULT_MARQUEE, GAME_SEEDS } from '@chai/core';
 import { dbEnv } from './env';
-import type { Db } from './types';
+import type { Db, Game } from './types';
 
 /*
  * Local development store: one JSON file shared by both apps until Supabase is connected
@@ -59,19 +59,11 @@ function emptyDb(): Db {
     questions: [],
     cvs: [],
     moments: [],
-    games: GAME_SEEDS.map((g, i) => ({
-      id: `game_${g.slug}`,
-      slug: g.slug,
-      name: g.name,
-      category: g.category,
-      status: 'open' as const,
-      capacity: g.capacity,
-      teamSize: g.teamSize,
-      blurb: g.blurb,
-      sort: i,
-    })),
+    games: GAME_SEEDS.map(seedGame),
     registrations: [],
     scoreEvents: [],
+    gameStations: [],
+    gameRuns: [],
     quizzes: [],
     quizControl: { quizId: null, phase: 'locked', startsAt: null, endedAt: null, updatedBy: null },
     quizSessions: [],
@@ -81,6 +73,30 @@ function emptyDb(): Db {
     audit: [],
     revision: 0,
   };
+}
+
+function seedGame(g: (typeof GAME_SEEDS)[number], i: number): Game {
+  return {
+    id: `game_${g.slug}`,
+    slug: g.slug,
+    name: g.name,
+    category: g.category,
+    status: 'open',
+    capacity: g.capacity,
+    teamSize: g.teamSize,
+    blurb: g.blurb,
+    sort: i,
+  };
+}
+
+/** Brings an older local store up to date: new tables, and games added to GAME_SEEDS since. */
+function upgrade(db: Db): Db {
+  db.gameStations ??= [];
+  db.gameRuns ??= [];
+  GAME_SEEDS.forEach((g, i) => {
+    if (!db.games.some((x) => x.slug === g.slug)) db.games.push(seedGame(g, i));
+  });
+  return db;
 }
 
 function sleep(ms: number) {
@@ -116,7 +132,7 @@ function load(): Db {
   if (!existsSync(DB_FILE)) return emptyDb();
   for (let attempt = 0; ; attempt++) {
     try {
-      return JSON.parse(readFileSync(DB_FILE, 'utf8')) as Db;
+      return upgrade(JSON.parse(readFileSync(DB_FILE, 'utf8')) as Db);
     } catch (error) {
       if (attempt > 5) throw error;
     }

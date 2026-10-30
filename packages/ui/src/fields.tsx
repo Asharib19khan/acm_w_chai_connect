@@ -10,7 +10,7 @@ import {
 import { cn } from './cn';
 
 const control =
-  'w-full rounded-2xl bg-ink-2 px-4 text-petal ring-1 ring-grape ring-inset placeholder:text-petal-50 transition-shadow duration-150 hover:ring-petal-50 focus:ring-2 focus:ring-plum focus:outline-none aria-[invalid=true]:ring-coral disabled:opacity-50';
+  'w-full rounded-2xl bg-surface px-4 text-fg ring-1 ring-edge-strong ring-inset placeholder:text-fg-subtle transition-shadow duration-150 hover:ring-fg-muted focus:ring-2 focus:ring-accent-strong focus:outline-none aria-[invalid=true]:ring-danger disabled:opacity-50';
 
 interface FieldProps {
   label: string;
@@ -31,19 +31,19 @@ export function Field({ label, hint, error, children, className, aside }: FieldP
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={id} className="text-petal text-sm font-semibold">
+        <label htmlFor={id} className="text-fg text-sm font-semibold">
           {label}
         </label>
         {aside}
       </div>
       {children({ id, describedBy, invalid: Boolean(error) })}
       {hint && !error && (
-        <p id={hintId} className="text-petal-72 text-sm">
+        <p id={hintId} className="text-fg-muted text-sm">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} role="alert" className="text-coral text-sm font-medium">
+        <p id={errorId} role="alert" className="text-danger text-sm font-medium">
           {error}
         </p>
       )}
@@ -73,7 +73,7 @@ export function Select({ className, children, ...rest }: SelectHTMLAttributes<HT
       <svg
         viewBox="0 0 24 24"
         aria-hidden
-        className="text-plum pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2"
+        className="text-accent-strong pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2"
       >
         <path
           d="m6 9 6 6 6-6"
@@ -100,10 +100,10 @@ export function Switch({ checked, onChange, label, description, disabled }: Swit
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex flex-col gap-0.5">
-        <span id={`${id}-l`} className="text-petal text-sm font-semibold">
+        <span id={`${id}-l`} className="text-fg text-sm font-semibold">
           {label}
         </span>
-        {description && <span className="text-petal-72 text-sm">{description}</span>}
+        {description && <span className="text-fg-muted text-sm">{description}</span>}
       </div>
       <button
         type="button"
@@ -114,13 +114,13 @@ export function Switch({ checked, onChange, label, description, disabled }: Swit
         onClick={() => onChange(!checked)}
         className={cn(
           'relative mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full ring-1 transition-colors duration-200 ring-inset disabled:opacity-50',
-          checked ? 'bg-plum ring-plum' : 'bg-ink-2 ring-grape',
+          checked ? 'bg-accent ring-accent-strong' : 'bg-surface-2 ring-edge-strong',
         )}
       >
         <span
           className={cn(
             'inline-block size-5 rounded-full shadow-sm transition-transform duration-200 ease-out',
-            checked ? 'bg-ink translate-x-6' : 'bg-petal-72 translate-x-1',
+            checked ? 'translate-x-6 bg-white' : 'bg-fg-muted translate-x-1',
           )}
         />
       </button>
@@ -137,7 +137,7 @@ interface CheckboxProps {
 
 export function Checkbox({ checked, onChange, children, invalid }: CheckboxProps) {
   return (
-    <label className="group text-petal flex cursor-pointer items-start gap-3 text-[0.95rem] leading-snug">
+    <label className="group text-fg flex cursor-pointer items-start gap-3 text-[0.95rem] leading-snug">
       <input
         type="checkbox"
         className="peer sr-only"
@@ -148,16 +148,16 @@ export function Checkbox({ checked, onChange, children, invalid }: CheckboxProps
       <span
         aria-hidden
         className={cn(
-          'peer-focus-visible:outline-plum mt-0.5 grid size-5.5 shrink-0 place-items-center rounded-md ring-1 transition-colors ring-inset peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2',
+          'peer-focus-visible:outline-accent-strong mt-0.5 grid size-5.5 shrink-0 place-items-center rounded-md ring-1 transition-colors ring-inset peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2',
           checked
-            ? 'bg-plum ring-plum'
+            ? 'bg-accent ring-accent-strong'
             : invalid
-              ? 'ring-coral'
-              : 'ring-grape group-hover:ring-petal-50',
+              ? 'ring-danger'
+              : 'bg-surface ring-edge-strong group-hover:ring-fg-muted',
         )}
       >
         {checked && (
-          <svg viewBox="0 0 24 24" className="text-ink size-3.5">
+          <svg viewBox="0 0 24 24" className="text-fg size-3.5">
             <path
               d="m5 12 5 5 9-10"
               stroke="currentColor"
@@ -187,7 +187,9 @@ export function ChoiceChip({ selected, onToggle, children }: ChipProps) {
       onClick={onToggle}
       className={cn(
         'h-10 rounded-full px-4 text-sm font-medium ring-1 transition-[background-color,color,box-shadow] duration-150 ring-inset',
-        selected ? 'bg-plum text-ink ring-plum' : 'text-petal ring-grape hover:ring-petal-50',
+        selected
+          ? 'bg-accent text-fg ring-accent-strong'
+          : 'bg-surface text-fg ring-edge-strong hover:ring-fg-muted',
       )}
     >
       {children}

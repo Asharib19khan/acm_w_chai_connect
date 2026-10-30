@@ -55,12 +55,18 @@ export function CodeInput({
           <span
             key={i}
             className={cn(
-              'bg-ink-2 text-petal grid h-15 w-full min-w-0 place-items-center rounded-xl font-mono text-2xl ring-1 transition-shadow ring-inset',
-              invalid ? 'ring-coral' : focused && i === caret ? 'ring-plum ring-2' : 'ring-grape',
+              'bg-surface text-fg grid h-15 w-full min-w-0 place-items-center rounded-xl font-mono text-2xl ring-1 transition-shadow ring-inset',
+              invalid
+                ? 'ring-danger'
+                : focused && i === caret
+                  ? 'ring-accent-strong ring-2'
+                  : 'ring-edge-strong',
             )}
           >
             {digit ||
-              (focused && i === caret ? <span className="cc-live-dot bg-plum h-6 w-0.5" /> : null)}
+              (focused && i === caret ? (
+                <span className="cc-live-dot bg-accent-strong h-6 w-0.5" />
+              ) : null)}
           </span>
         ))}
       </div>

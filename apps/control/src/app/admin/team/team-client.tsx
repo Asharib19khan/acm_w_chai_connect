@@ -28,6 +28,7 @@ export function TeamClient({
   const [pending, start] = useTransition();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'admin' | 'member'>('member');
   const [enrolment, setEnrolment] = useState<(Enrolment & { name: string }) | null>(null);
   const [stepUp, setStepUp] = useState<null | ((code: string) => void)>(null);
   const [companies, setCompanies] = useState(settings.companies.join('\n'));
@@ -74,33 +75,40 @@ export function TeamClient({
 
   return (
     <div className="flex flex-col gap-10">
-      <h1 className="font-display text-petal text-4xl font-black tracking-tight">
-        Admins & settings
-      </h1>
+      <h1 className="font-display text-fg text-4xl font-black tracking-tight">Admins & settings</h1>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <div className="bg-prussian ring-grape flex flex-col gap-4 rounded-[24px] p-6 ring-1">
-          <h2 className="font-display text-petal text-xl font-bold">Admins</h2>
+        <div className="bg-surface ring-edge flex flex-col gap-4 rounded-[24px] p-6 ring-1">
+          <div>
+            <h2 className="font-display text-fg text-xl font-bold">People</h2>
+            <p className="text-fg-muted mt-1 text-sm">
+              Admins use this portal. Web team members can only sign in to the games desk; this
+              portal refuses them.
+            </p>
+          </div>
           <ul className="flex flex-col">
             {admins.map((a) => {
               const locked = a.hardLocked || (a.lockedUntil && Date.parse(a.lockedUntil) > now);
               return (
                 <li
                   key={a.id}
-                  className="border-petal-12 flex flex-wrap items-center justify-between gap-3 border-t py-4 first:border-0"
+                  className="border-line flex flex-wrap items-center justify-between gap-3 border-t py-4 first:border-0"
                 >
                   <div className="min-w-0">
-                    <p className="text-petal font-semibold">
-                      {a.name} <span className="text-petal-72 text-sm font-normal">· {a.role}</span>
+                    <p className="text-fg font-semibold">
+                      {a.name}{' '}
+                      <span className="text-fg-muted text-sm font-normal">
+                        · {a.role === 'member' ? 'web team · games desk only' : a.role}
+                      </span>
                     </p>
-                    <p className="text-petal-72 truncate text-sm">{a.email}</p>
+                    <p className="text-fg-muted truncate text-sm">{a.email}</p>
                     <p className="mt-1 flex flex-wrap gap-2 text-xs">
                       <Status ok={!a.disabled} label={a.disabled ? 'disabled' : 'active'} />
                       {!a.totpConfirmed && <Status ok={false} label="authenticator not set up" />}
                       {locked && (
                         <Status ok={false} label={a.hardLocked ? 'locked' : 'locked 15 min'} />
                       )}
-                      <span className="text-petal-50">
+                      <span className="text-fg-subtle">
                         {a.activeSessions} session{a.activeSessions === 1 ? '' : 's'} · last sign-in{' '}
                         {a.lastSignInAt
                           ? new Date(a.lastSignInAt).toLocaleString('en-GB', {
@@ -150,11 +158,11 @@ export function TeamClient({
             })}
           </ul>
           <form
-            className="border-petal-12 grid gap-3 border-t pt-5 sm:grid-cols-[1fr_1.3fr_auto] sm:items-end"
+            className="border-line grid gap-3 border-t pt-5 sm:grid-cols-[1fr_1.3fr] sm:items-end"
             onSubmit={(e) => {
               e.preventDefault();
               withStepUp(
-                (code) => createAdminAction({ name, email, stepUpCode: code }),
+                (code) => createAdminAction({ name, email, role, stepUpCode: code }),
                 (d) => {
                   setEnrolment({ ...d, name });
                   setName('');
@@ -187,18 +195,45 @@ export function TeamClient({
                 />
               )}
             </Field>
+            <fieldset className="flex flex-col gap-2 sm:col-span-2">
+              <legend className="text-fg mb-2 text-sm font-semibold">Access</legend>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ['member', 'Web team (games desk only)'],
+                    ['admin', 'Admin (this portal)'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={role === value}
+                    onClick={() => setRole(value)}
+                    className={cn(
+                      'h-10 rounded-full px-4 text-sm font-medium ring-1 transition-colors ring-inset',
+                      role === value
+                        ? 'bg-accent text-fg ring-accent-strong'
+                        : 'bg-surface text-fg ring-edge-strong hover:ring-fg-muted',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
             <Button
               type="submit"
               loading={pending}
               disabled={name.length < 2 || !email.includes('@')}
+              className="justify-self-start sm:col-span-2"
             >
-              Add admin
+              {role === 'member' ? 'Add web team member' : 'Add admin'}
             </Button>
           </form>
         </div>
 
-        <div className="bg-prussian ring-grape flex flex-col gap-5 rounded-[24px] p-6 ring-1">
-          <h2 className="font-display text-petal text-xl font-bold">Switches</h2>
+        <div className="bg-surface ring-edge flex flex-col gap-5 rounded-[24px] p-6 ring-1">
+          <h2 className="font-display text-fg text-xl font-bold">Switches</h2>
           <Switch
             checked={settings.switches.questions}
             onChange={(v) => setting({ switches: { ...settings.switches, questions: v } })}
@@ -219,7 +254,7 @@ export function TeamClient({
             onChange={(v) => setting({ switches: { ...settings.switches, moments: v } })}
             label="Share Moments open"
           />
-          <div className="border-petal-12 border-t" />
+          <div className="border-line border-t" />
           <Switch
             checked={settings.moderation}
             onChange={(v) => setting({ moderation: v })}
@@ -232,7 +267,7 @@ export function TeamClient({
             label="Projector mode"
             description="Lifts the display background for washed-out projectors."
           />
-          <div className="border-petal-12 flex flex-col gap-2 border-t pt-5">
+          <div className="border-line flex flex-col gap-2 border-t pt-5">
             <Field label="Companies and fields for CVs" hint="One per line.">
               {({ id, describedBy }) => (
                 <textarea
@@ -240,7 +275,7 @@ export function TeamClient({
                   aria-describedby={describedBy}
                   value={companies}
                   onChange={(e) => setCompanies(e.target.value)}
-                  className="bg-ink-2 text-petal ring-grape focus:ring-plum min-h-32 rounded-2xl px-4 py-3 text-sm ring-1 ring-inset focus:ring-2 focus:outline-none"
+                  className="bg-surface-2 text-fg ring-edge focus:ring-accent-strong min-h-32 rounded-2xl px-4 py-3 text-sm ring-1 ring-inset focus:ring-2 focus:outline-none"
                 />
               )}
             </Field>
@@ -263,41 +298,41 @@ export function TeamClient({
               Save companies
             </Button>
           </div>
-          <div className="border-petal-12 flex items-center justify-between gap-3 border-t pt-5">
+          <div className="border-line flex items-center justify-between gap-3 border-t pt-5">
             <div>
-              <p className="text-petal text-sm font-semibold">Google Drive</p>
-              <p className="text-petal-72 text-sm">
+              <p className="text-fg text-sm font-semibold">Google Drive</p>
+              <p className="text-fg-muted text-sm">
                 Not connected yet. Connects in the Share Moments phase.
               </p>
             </div>
-            <span className="bg-grape size-2.5 rounded-full" aria-label="Not connected" />
+            <span className="bg-edge size-2.5 rounded-full" aria-label="Not connected" />
           </div>
         </div>
       </section>
 
       <section
-        className="bg-prussian ring-grape flex flex-col gap-4 rounded-[24px] p-6 ring-1"
+        className="bg-surface ring-edge flex flex-col gap-4 rounded-[24px] p-6 ring-1"
         aria-labelledby="audit-h"
       >
-        <h2 id="audit-h" className="font-display text-petal text-xl font-bold">
+        <h2 id="audit-h" className="font-display text-fg text-xl font-bold">
           Audit log
         </h2>
         <ul className="max-h-[32rem] overflow-y-auto">
           {audit.map((e) => (
             <li
               key={e.id}
-              className="border-petal-12 grid grid-cols-[8rem_minmax(0,1fr)] gap-3 border-t py-2.5 text-sm first:border-0 sm:grid-cols-[10rem_9rem_minmax(0,1fr)]"
+              className="border-line grid grid-cols-[8rem_minmax(0,1fr)] gap-3 border-t py-2.5 text-sm first:border-0 sm:grid-cols-[10rem_9rem_minmax(0,1fr)]"
             >
-              <span className="text-petal-50 font-mono text-xs">
+              <span className="text-fg-subtle font-mono text-xs">
                 {new Date(e.createdAt).toLocaleString('en-GB', {
                   timeZone: 'Asia/Karachi',
                   dateStyle: 'short',
                   timeStyle: 'short',
                 })}
               </span>
-              <span className="text-petal truncate font-semibold">{e.adminName ?? 'system'}</span>
-              <span className="text-petal-72 col-span-2 truncate sm:col-span-1">
-                <span className="text-plum font-mono">{e.action}</span> {e.detail}
+              <span className="text-fg truncate font-semibold">{e.adminName ?? 'system'}</span>
+              <span className="text-fg-muted col-span-2 truncate sm:col-span-1">
+                <span className="text-accent-strong font-mono">{e.action}</span> {e.detail}
               </span>
             </li>
           ))}
@@ -326,7 +361,7 @@ function Status({ ok, label }: { ok: boolean; label: string }) {
     <span
       className={cn(
         'rounded-full px-2 py-0.5 font-semibold ring-1',
-        ok ? 'text-mint ring-mint/40' : 'text-coral ring-coral/50',
+        ok ? 'text-ok ring-ok/40' : 'text-danger ring-danger/50',
       )}
     >
       {label}
@@ -365,12 +400,14 @@ function EnrolmentModal({
           {left > 0 ? (
             <QrCode value={enrolment.otpauth} className="w-60" label="Authenticator setup QR" />
           ) : (
-            <p className="text-coral">This QR expired. Reset the authenticator to get a new one.</p>
+            <p className="text-danger">
+              This QR expired. Reset the authenticator to get a new one.
+            </p>
           )}
-          <p className="text-petal-72 font-mono text-xs">
+          <p className="text-fg-muted font-mono text-xs">
             Expires in {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
           </p>
-          <p className="text-petal self-start text-sm font-semibold">
+          <p className="text-fg self-start text-sm font-semibold">
             Then type the code their phone shows:
           </p>
           <CodeInput
@@ -389,7 +426,7 @@ function EnrolmentModal({
               })
             }
           />
-          {pending && <p className="text-petal-72 text-sm">Checking…</p>}
+          {pending && <p className="text-fg-muted text-sm">Checking…</p>}
         </div>
       )}
     </Modal>

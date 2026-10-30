@@ -206,3 +206,109 @@ describe('admin auth', () => {
     expect(admin.lockedUntil).not.toBeNull();
   });
 });
+
+describe('games desk is separate from the admin portal', () => {
+  const codeFor = async (secret: string, offset = 0) => {
+    const { totpAt, timeStep } = await import('@chai/core/totp');
+    return totpAt(secret, timeStep() + offset);
+  };
+
+  it('never lets a member into the admin portal, but lets them into the desk', async () => {
+    await db.bootstrapSuperadmin('Ye');
+    const enrol = await db.createAdmin(
+      { name: 'Webdev member', email: 'member@example.com', role: 'member' },
+      actor,
+    );
+    const onControl = await db.signIn('member@example.com', await codeFor(enrol.secret), null);
+    expect(onControl).toEqual({ ok: false, message: "Couldn't sign you in" });
+
+    const onDesk = await db.signIn(
+      'member@example.com',
+      await codeFor(enrol.secret, 1),
+      null,
+      'desk',
+    );
+    expect(onDesk.ok).toBe(true);
+    if (!onDesk.ok) return;
+    expect(await db.sessionFromToken(onDesk.token, 'desk')).not.toBeNull();
+    // The same token is worthless on the admin portal.
+    expect(await db.sessionFromToken(onDesk.token, 'control')).toBeNull();
+    expect(await db.sessionFromToken(onDesk.token)).toBeNull();
+  });
+
+  it('keeps admin sessions on the site that created them', async () => {
+    const enrol = await db.createAdmin(
+      { name: 'Admin', email: 'admin@example.com', role: 'admin' },
+      actor,
+    );
+    const r = await db.signIn('admin@example.com', await codeFor(enrol.secret), null, 'control');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(await db.sessionFromToken(r.token, 'control')).not.toBeNull();
+    expect(await db.sessionFromToken(r.token, 'desk')).toBeNull();
+  });
+});
+
+describe('game stations (Skill Issues)', () => {
+  const run = (over: Partial<DbModule.StationRunInput> = {}): DbModule.StationRunInput => ({
+    runId: Math.random().toString(16).slice(2).padEnd(32, '0').slice(0, 32),
+    rollNo: '25K-1234',
+    points: 300,
+    progressPercent: 20,
+    bestAtSeconds: 90,
+    roundSeconds: 180,
+    playedAt: new Date().toISOString(),
+    ...over,
+  });
+
+  it('only accepts a key for its own game, and stops after revoke', async () => {
+    const skill = await game('skill-issues');
+    const { key, station } = await db.createStation(skill, 'Laptop 1', actor);
+    expect(await db.stationFromKey(key, 'skill-issues')).not.toBeNull();
+    expect(await db.stationFromKey(key, 'fast-type')).toBeNull();
+    expect(await db.stationFromKey('ccst_wrongwrongwrongwrongwrong', 'skill-issues')).toBeNull();
+    await db.revokeStation(station.id, actor);
+    expect(await db.stationFromKey(key, 'skill-issues')).toBeNull();
+  });
+
+  it('gives each player one turn; a crash replay replaces their record', async () => {
+    const skill = await game('skill-issues');
+    await db.register({ rollNo: '25K-1234', department: 'CS', gameIds: [skill] });
+    const { key } = await db.createStation(skill, 'Laptop 1', actor);
+    const auth = (await db.stationFromKey(key, 'skill-issues'))!;
+
+    expect(await db.stationCheckPlayer(skill, '25K-9999')).toBe('not_registered');
+    expect(await db.stationCheckPlayer(skill, '25K-1234')).toBe('allowed');
+    // Second Start (any laptop): the game must ask for the replay key.
+    expect(await db.stationCheckPlayer(skill, '25K-1234')).toBe('already_played');
+
+    const first = run({ points: 300 });
+    expect(await db.recordStationRun(auth, first)).toMatchObject({ counted: true });
+    expect(await db.recordStationRun(auth, first)).toEqual({ kind: 'duplicate' });
+    // A later round without a replay (e.g. via the offline list) is kept but never scores.
+    expect(await db.recordStationRun(auth, run({ points: 900 }))).toMatchObject({
+      matched: true,
+      counted: false,
+    });
+    expect((await db.leaderboard(skill))[0]!.total).toBe(300);
+
+    // Replay after a crash (key already checked by the API): the new round replaces the old one.
+    expect(await db.stationReplay(auth, '25K-1234')).toBe('allowed');
+    await db.recordStationRun(auth, run({ points: 120 }));
+    expect((await db.leaderboard(skill))[0]!.total).toBe(120);
+    expect(await db.stationCheckPlayer(skill, '25K-1234')).toBe('already_played');
+    expect(await db.stationReplay(auth, '25K-9999')).toBe('not_registered');
+  });
+
+  it('keeps runs from roll numbers that cannot play, without scoring them', async () => {
+    const skill = await game('skill-issues');
+    const { key } = await db.createStation(skill, 'Laptop 1', actor);
+    const auth = (await db.stationFromKey(key, 'skill-issues'))!;
+    expect(await db.recordStationRun(auth, run({ rollNo: '24K-0001' }))).toMatchObject({
+      kind: 'stored',
+      matched: false,
+    });
+    expect(await db.leaderboard(skill)).toHaveLength(0);
+    expect((await db.listStations())[0]!.unmatchedRuns).toBe(1);
+  });
+});

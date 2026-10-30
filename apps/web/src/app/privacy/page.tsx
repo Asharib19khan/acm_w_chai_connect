@@ -55,12 +55,12 @@ export default function PrivacyPage() {
       </PageIntro>
       <div className="flex flex-col">
         {sections.map(([title, lines]) => (
-          <section key={title} className="border-petal-12 border-t py-8">
-            <h2 className="font-display text-petal text-xl font-bold">{title}</h2>
-            <ul className="text-petal-72 mt-4 flex flex-col gap-2.5">
+          <section key={title} className="border-line border-t py-8">
+            <h2 className="font-display text-fg text-xl font-bold">{title}</h2>
+            <ul className="text-fg-muted mt-4 flex flex-col gap-2.5">
               {lines.map((line) => (
                 <li key={line} className="flex gap-3">
-                  <span className="bg-plum mt-2.5 size-1.5 shrink-0 rounded-full" aria-hidden />
+                  <span className="bg-accent mt-2.5 size-1.5 shrink-0 rounded-full" aria-hidden />
                   <span className="leading-relaxed">{line}</span>
                 </li>
               ))}

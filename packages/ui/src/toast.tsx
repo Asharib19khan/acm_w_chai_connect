@@ -42,10 +42,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               role={t.tone === 'error' ? 'alert' : 'status'}
               className={cn(
-                'pointer-events-auto flex max-w-md items-center gap-3 rounded-full px-5 py-3 text-sm font-medium shadow-[0_16px_40px_-16px_rgb(0_0_0_/_0.8)] ring-1',
-                t.tone === 'error' && 'bg-prussian text-coral ring-coral/60',
-                t.tone === 'success' && 'bg-plum text-ink ring-plum',
-                t.tone === 'info' && 'bg-prussian text-petal ring-grape',
+                'pointer-events-auto flex max-w-md items-center gap-3 rounded-full px-5 py-3 text-sm font-medium shadow-[0_16px_40px_-16px_var(--cc-shadow)] ring-1',
+                t.tone === 'error' && 'bg-surface text-danger ring-danger/60',
+                t.tone === 'success' && 'bg-brand text-on-brand ring-brand',
+                t.tone === 'info' && 'bg-surface text-fg ring-edge',
               )}
             >
               {t.message}

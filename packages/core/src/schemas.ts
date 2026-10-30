@@ -75,12 +75,50 @@ export const quizQuestionSchema = z
     message: 'Mark the correct option.',
   });
 
+/*
+ * Share Moments names: letters from any language (so Urdu names work), plus spaces and . ' -
+ * between them. No emojis, digits or symbols, and at least 3 letters. The phone strips
+ * disallowed characters as they're typed; the server checks again.
+ */
+export const MOMENT_NAME_MIN_LETTERS = 3;
+const NAME_ALLOWED = /^[\p{L}\p{M}](?:[\p{L}\p{M} .'’-]*[\p{L}\p{M}.])?$/u;
+// Invisible emoji helpers (variation selectors, joiner, keycap, tag characters) count as letter
+// "marks", so they'd slip past the rule above. Ban them by name.
+const EMOJI_BITS = /[\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/u;
+const EMOJI_BITS_ALL = new RegExp(EMOJI_BITS.source, 'gu');
+
+export function cleanMomentName(raw: string): string {
+  // Drop anything that isn't a letter, mark, space or . ' - (emojis, digits, symbols).
+  return raw
+    .replace(EMOJI_BITS_ALL, '')
+    .replace(/[^\p{L}\p{M} .'’-]/gu, '')
+    .replace(/ {2,}/g, ' ')
+    .trimStart();
+}
+
+export function momentNameLetters(name: string): number {
+  return name.match(/\p{L}/gu)?.length ?? 0;
+}
+
+export const momentNameSchema = z
+  .string()
+  .trim()
+  .max(LIMITS.nameMax)
+  .refine(
+    (v) => NAME_ALLOWED.test(v) && !EMOJI_BITS.test(v),
+    'Use letters only, no emojis or numbers.',
+  )
+  .refine(
+    (v) => momentNameLetters(v) >= MOMENT_NAME_MIN_LETTERS,
+    `Your name needs at least ${MOMENT_NAME_MIN_LETTERS} letters.`,
+  );
+
 export const momentInitSchema = z.object({
-  uploaderName: z.string().trim().min(LIMITS.nameMin, 'Add your name.').max(LIMITS.nameMax),
+  uploaderName: momentNameSchema,
   title: z.string().trim().max(LIMITS.momentTitleMax).optional(),
   fileName: z.string().max(200),
-  size: z.number().int().positive(),
-  mime: z.string().regex(/^image\//, 'Photos only.'),
+  size: z.number().int().positive().max(LIMITS.momentMaxBytes, 'That file is over 2 GB.'),
+  mime: z.string().regex(/^(image|video)\/[\w.+-]+$/, 'Photos and videos only.'),
   md5: z.string().regex(/^[a-f0-9]{32}$/),
 });
 

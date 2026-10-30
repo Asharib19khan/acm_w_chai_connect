@@ -34,26 +34,26 @@ export function PresenterBar({ data, quizzes, name, rotate, onRotate, spotlightI
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: hidden ? 'calc(100% - 0.6rem)' : 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="bg-ink/90 text-petal ring-grape fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full p-2 pl-5 text-sm shadow-[0_20px_60px_-20px_rgb(0_0_0_/_0.9)] ring-1 backdrop-blur-md"
+      className="bg-surface/95 text-fg ring-edge fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full p-2 pl-5 text-sm shadow-[0_20px_60px_-20px_var(--cc-shadow)] ring-1 backdrop-blur-md"
       role="toolbar"
       aria-label="Presenter controls"
     >
       <button
         type="button"
-        className="text-petal-72 hover:text-petal font-semibold"
+        className="text-fg-muted hover:text-fg font-semibold"
         onClick={() => setHidden(!hidden)}
         aria-expanded={!hidden}
       >
         {name}
       </button>
-      <span className="bg-grape h-6 w-px" aria-hidden />
+      <span className="bg-edge h-6 w-px" aria-hidden />
       {phase === 'locked' && (
         <>
           <select
             value={quizId}
             onChange={(e) => setQuizId(e.target.value)}
             aria-label="Quiz to unlock"
-            className="bg-prussian text-petal ring-grape focus:ring-plum h-9 max-w-52 rounded-full px-3 ring-1 focus:outline-none"
+            className="bg-surface text-fg ring-edge focus:ring-accent-strong h-9 max-w-52 rounded-full px-3 ring-1 focus:outline-none"
           >
             {quizzes.length === 0 && <option value="">No quizzes yet</option>}
             {quizzes.map((q) => (
@@ -115,21 +115,21 @@ export function PresenterBar({ data, quizzes, name, rotate, onRotate, spotlightI
           Close spotlight
         </Button>
       )}
-      <span className="bg-grape h-6 w-px" aria-hidden />
+      <span className="bg-edge h-6 w-px" aria-hidden />
       <button
         type="button"
         onClick={() => onRotate(!rotate)}
         aria-pressed={rotate}
         className={cn(
           'h-9 rounded-full px-3 font-semibold ring-1',
-          rotate ? 'text-petal ring-grape' : 'text-petal-50 ring-grape/50',
+          rotate ? 'text-fg ring-edge' : 'text-fg-subtle ring-edge/50',
         )}
       >
         Idle rotation {rotate ? 'on' : 'off'}
       </button>
       <a
         href="/admin"
-        className="text-plum hover:text-petal h-9 rounded-full px-3 leading-9 font-semibold"
+        className="text-accent-strong hover:text-fg h-9 rounded-full px-3 leading-9 font-semibold"
       >
         Admin
       </a>

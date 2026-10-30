@@ -1,45 +1,92 @@
 /*
  * Chai Connect design tokens: the only place raw hex values may appear.
- * Roles (blueprint section 2): Ink = canvas, Prussian = surfaces, Grape = borders only,
- * Plum = actions/links/focus, Petal = text on dark. Mint/Coral exist only for moderation flags.
+ *
+ * Light theme (28 Oct amendment A6): the same five brand colours, flipped. Petal tints are the
+ * canvas, white cards sit on it, Ink is the text, Prussian is the strong fill (primary buttons,
+ * the moving strip), Plum is the accent fill and Grape draws borders. Components use the ROLE
+ * tokens below (canvas, surface, fg, line, edge, accent, brand), never the brand names directly,
+ * so a palette change happens in this file only.
  */
 :root {
+  /* Brand colours */
   --cc-ink: #011c27;
-  --cc-ink-2: #021f30;
   --cc-prussian: #03254e;
-  --cc-prussian-2: #0a2f5c;
   --cc-grape: #545677;
   --cc-plum: #eb9fef;
-  --cc-plum-deep: #d77fdc;
   --cc-petal: #fecee9;
-  --cc-petal-72: rgb(254 206 233 / 0.72);
-  /* Faintest text tone: 0.64 keeps 4.5:1 even on Prussian surfaces. */
-  --cc-petal-50: rgb(254 206 233 / 0.64);
-  --cc-petal-12: rgb(254 206 233 / 0.12);
-  --cc-petal-06: rgb(254 206 233 / 0.06);
-  --cc-plum-16: rgb(235 159 239 / 0.16);
+  --cc-white: #ffffff;
+  /* Status colours (moderation flags, errors); the -ink tones are the text-safe versions. */
   --cc-mint: #7be0b5;
+  --cc-mint-ink: #0b6e4a;
   --cc-coral: #ff9a8f;
+  --cc-coral-ink: #b1261c;
+
+  /* Roles */
+  --cc-canvas: color-mix(in srgb, var(--cc-petal) 30%, var(--cc-white));
+  --cc-canvas-2: color-mix(in srgb, var(--cc-petal) 55%, var(--cc-white));
+  --cc-surface: var(--cc-white);
+  --cc-surface-2: color-mix(in srgb, var(--cc-petal) 16%, var(--cc-white));
+  --cc-fg: var(--cc-ink);
+  /* Muted 0.76 and subtle 0.66 both keep 4.5:1 on the canvas and on white. */
+  --cc-fg-muted: rgb(1 28 39 / 0.76);
+  --cc-fg-subtle: rgb(1 28 39 / 0.66);
+  --cc-line: rgb(1 28 39 / 0.1);
+  --cc-wash: rgb(1 28 39 / 0.045);
+  --cc-wash-2: rgb(1 28 39 / 0.09);
+  --cc-edge: rgb(84 86 119 / 0.26);
+  /* Input and control borders: 3:1 against white (WCAG 1.4.11). */
+  --cc-edge-strong: rgb(84 86 119 / 0.72);
+  --cc-brand: var(--cc-prussian);
+  --cc-brand-2: var(--cc-ink);
+  --cc-on-brand: var(--cc-petal);
+  --cc-accent: var(--cc-plum);
+  --cc-accent-soft: rgb(235 159 239 / 0.26);
+  /* Plum deepened with Ink: the text-safe accent (5:1 on the canvas). */
+  --cc-accent-strong: color-mix(in srgb, var(--cc-plum) 50%, var(--cc-ink));
+  --cc-on-accent: var(--cc-ink);
+  --cc-ok: var(--cc-mint-ink);
+  --cc-ok-soft: var(--cc-mint);
+  --cc-danger: var(--cc-coral-ink);
+  --cc-danger-soft: var(--cc-coral);
+  --cc-shadow: rgb(3 37 78 / 0.18);
+
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 }
 
 @theme inline {
+  --color-*: initial;
+  --color-white: var(--cc-white);
+  --color-transparent: transparent;
+  --color-current: currentColor;
   --color-ink: var(--cc-ink);
-  --color-ink-2: var(--cc-ink-2);
   --color-prussian: var(--cc-prussian);
-  --color-prussian-2: var(--cc-prussian-2);
   --color-grape: var(--cc-grape);
   --color-plum: var(--cc-plum);
-  --color-plum-deep: var(--cc-plum-deep);
   --color-petal: var(--cc-petal);
-  --color-petal-72: var(--cc-petal-72);
-  --color-petal-50: var(--cc-petal-50);
-  --color-petal-12: var(--cc-petal-12);
-  --color-petal-06: var(--cc-petal-06);
-  --color-plum-16: var(--cc-plum-16);
-  --color-mint: var(--cc-mint);
-  --color-coral: var(--cc-coral);
+  --color-canvas: var(--cc-canvas);
+  --color-canvas-2: var(--cc-canvas-2);
+  --color-surface: var(--cc-surface);
+  --color-surface-2: var(--cc-surface-2);
+  --color-fg: var(--cc-fg);
+  --color-fg-muted: var(--cc-fg-muted);
+  --color-fg-subtle: var(--cc-fg-subtle);
+  --color-line: var(--cc-line);
+  --color-wash: var(--cc-wash);
+  --color-wash-2: var(--cc-wash-2);
+  --color-edge: var(--cc-edge);
+  --color-edge-strong: var(--cc-edge-strong);
+  --color-brand: var(--cc-brand);
+  --color-brand-2: var(--cc-brand-2);
+  --color-on-brand: var(--cc-on-brand);
+  --color-accent: var(--cc-accent);
+  --color-accent-soft: var(--cc-accent-soft);
+  --color-accent-strong: var(--cc-accent-strong);
+  --color-on-accent: var(--cc-on-accent);
+  --color-ok: var(--cc-ok);
+  --color-ok-soft: var(--cc-ok-soft);
+  --color-danger: var(--cc-danger);
+  --color-danger-soft: var(--cc-danger-soft);
   --font-display: var(--font-unbounded), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
@@ -58,15 +105,28 @@
 
 @keyframes cc-steam {
   0% {
-    transform: translate3d(0, 6px, 0) scaleY(0.9);
+    transform: translate3d(0, 5px, 0) scale(0.75, 0.85);
     opacity: 0;
   }
-  25% {
-    opacity: 0.9;
+  22% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.45;
   }
   100% {
-    transform: translate3d(var(--drift, 4px), -26px, 0) scaleY(1.15);
+    transform: translate3d(var(--drift, 3px), -14px, 0) scale(1.7, 1.2);
     opacity: 0;
+  }
+}
+
+@keyframes cc-chai-sway {
+  0%,
+  100% {
+    transform: rotate(-1.6deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.6deg) translateY(0.4px);
   }
 }
 
@@ -90,30 +150,30 @@
 }
 
 html {
-  background: var(--cc-ink);
-  color: var(--cc-petal);
-  color-scheme: dark;
+  background: var(--cc-canvas);
+  color: var(--cc-fg);
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
-  scrollbar-color: var(--cc-grape) transparent;
+  scrollbar-color: var(--cc-edge-strong) transparent;
 }
 
 body {
   min-height: 100dvh;
   margin: 0;
-  background: var(--cc-ink);
+  background: var(--cc-canvas);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  caret-color: var(--cc-plum);
+  caret-color: var(--cc-accent-strong);
 }
 
 ::selection {
-  background: var(--cc-plum);
+  background: var(--cc-accent);
   color: var(--cc-ink);
 }
 
 :focus-visible {
-  outline: 2px solid var(--cc-plum);
+  outline: 2px solid var(--cc-accent-strong);
   outline-offset: 2px;
 }
 
@@ -122,9 +182,9 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--cc-grape);
+  background: var(--cc-edge-strong);
   border-radius: 999px;
-  border: 3px solid var(--cc-ink);
+  border: 3px solid var(--cc-canvas);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -140,12 +200,7 @@ a {
 }
 
 .cc-skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--cc-petal-06) 0%,
-    var(--cc-petal-12) 50%,
-    var(--cc-petal-06) 100%
-  );
+  background: linear-gradient(90deg, var(--cc-wash) 0%, var(--cc-wash-2) 50%, var(--cc-wash) 100%);
   background-size: 200% 100%;
   animation: cc-shimmer 1.4s linear infinite;
 }
@@ -164,6 +219,9 @@ a {
   }
   [data-steam] {
     animation: none !important;
-    opacity: 0.5;
+    opacity: 0.5 !important;
+  }
+  [data-chai-surface] {
+    animation: none !important;
   }
 }

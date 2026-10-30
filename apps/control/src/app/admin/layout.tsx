@@ -10,13 +10,8 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const { admin, session } = await requireAdminPage();
   return (
-    <div className="bg-ink min-h-dvh">
-      <AdminHeader
-        name={admin.name}
-        role={admin.role}
-        expiresAt={session.expiresAt}
-        portal="admin"
-      />
+    <div className="min-h-dvh">
+      <AdminHeader name={admin.name} role={admin.role} expiresAt={session.expiresAt} />
       <div className="mx-auto max-w-[90rem] px-4 py-8 sm:px-6 sm:py-10">{children}</div>
     </div>
   );
