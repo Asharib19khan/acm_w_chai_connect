@@ -16,7 +16,9 @@
         "SENTRY_*",
         "*_KEY",
         "CRON_SECRET",
-        "SUPERADMIN_EMAIL"
+        "SUPERADMIN_EMAIL",
+        "MOMENTS_*",
+        "RETRY_SECRET"
       ]
     },
     "dev": {
