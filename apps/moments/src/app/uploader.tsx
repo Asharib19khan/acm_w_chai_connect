@@ -94,7 +94,11 @@ export function MomentsUploader({ open }: { open: boolean }) {
       ? (nameCheck.error.issues[0]?.message ?? null)
       : null;
   const batchId = useRef(`b${Date.now().toString(36)}`);
-  const cameraRef = useRef<HTMLInputElement>(null);
+  // One capture type per input: phones only open the camera directly for exactly photo OR video.
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const [cameraChoice, setCameraChoice] = useState(false);
+  const cameraCellRef = useRef<HTMLDivElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const active = useRef(0);
   const itemsRef = useRef<Item[]>([]);
@@ -132,6 +136,20 @@ export function MomentsUploader({ open }: { open: boolean }) {
       lock?.release().catch(() => {});
     };
   }, [busy]);
+
+  useEffect(() => {
+    if (!cameraChoice) return;
+    const away = (e: PointerEvent) => {
+      if (!cameraCellRef.current?.contains(e.target as Node)) setCameraChoice(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setCameraChoice(false);
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [cameraChoice]);
 
   const upload = useCallback(
     async (item: Item) => {
@@ -373,27 +391,101 @@ export function MomentsUploader({ open }: { open: boolean }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => cameraRef.current?.click()}
-          disabled={!unlocked}
-          aria-describedby={unlocked ? undefined : 'upload-lock'}
-          className="group bg-accent text-fg flex min-h-36 flex-col items-start justify-between gap-6 rounded-[28px] p-5 text-left transition-[transform,opacity] duration-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:min-h-44 sm:p-7"
-        >
-          <svg viewBox="0 0 24 24" className="size-8" aria-hidden>
-            <path
-              d="M4 8h3l2-3h6l2 3h3v11H4z"
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="none"
-              strokeLinejoin="round"
-            />
-            <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="2" fill="none" />
-          </svg>
-          <span className="font-display text-lg leading-tight font-bold sm:text-2xl">
-            Take a photo or video
-          </span>
-        </button>
+        <div ref={cameraCellRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setCameraChoice(true)}
+            aria-expanded={cameraChoice}
+            disabled={!unlocked}
+            aria-describedby={unlocked ? undefined : 'upload-lock'}
+            className="group bg-accent text-fg flex size-full min-h-36 flex-col items-start justify-between gap-6 rounded-[28px] p-5 text-left transition-[transform,opacity] duration-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:min-h-44 sm:p-7"
+          >
+            <svg viewBox="0 0 24 24" className="size-8" aria-hidden>
+              <path
+                d="M4 8h3l2-3h6l2 3h3v11H4z"
+                stroke="currentColor"
+                strokeWidth="2"
+                fill="none"
+                strokeLinejoin="round"
+              />
+              <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="2" fill="none" />
+            </svg>
+            <span className="font-display text-lg leading-tight font-bold sm:text-2xl">
+              Take a photo or video
+            </span>
+          </button>
+          <AnimatePresence>
+            {cameraChoice && (
+              <motion.div
+                role="group"
+                aria-label="Take a photo or a video"
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-accent absolute inset-0 grid grid-rows-2 gap-1.5 rounded-[28px] p-1.5"
+              >
+                {[
+                  { label: 'Photo', ref: photoRef },
+                  { label: 'Video', ref: videoRef },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    autoFocus={opt.label === 'Photo'}
+                    onClick={() => {
+                      // Must run inside the tap itself, or the phone blocks the camera.
+                      opt.ref.current?.click();
+                      setCameraChoice(false);
+                    }}
+                    className="bg-surface text-fg font-display flex items-center gap-2.5 rounded-[22px] px-4 text-lg font-bold transition-transform active:scale-[0.97] sm:text-2xl"
+                  >
+                    {opt.label === 'Photo' ? (
+                      <svg viewBox="0 0 24 24" className="size-6 shrink-0" aria-hidden>
+                        <path
+                          d="M4 8h3l2-3h6l2 3h3v11H4z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinejoin="round"
+                        />
+                        <circle
+                          cx="12"
+                          cy="13"
+                          r="3.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          fill="none"
+                        />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="size-6 shrink-0" aria-hidden>
+                        <rect
+                          x="3"
+                          y="6"
+                          width="13"
+                          height="12"
+                          rx="2.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          fill="none"
+                        />
+                        <path
+                          d="m16 10.5 5-3v9l-5-3z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                    {opt.label}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <button
           type="button"
           onClick={() => galleryRef.current?.click()}
@@ -436,9 +528,21 @@ export function MomentsUploader({ open }: { open: boolean }) {
         {unlocked ? ' ' : 'Add your name or choose Stay anonymous to start.'}
       </p>
       <input
-        ref={cameraRef}
+        ref={photoRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        tabIndex={-1}
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={videoRef}
+        type="file"
+        accept="video/*"
         capture="environment"
         className="sr-only"
         tabIndex={-1}
