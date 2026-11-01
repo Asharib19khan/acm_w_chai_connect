@@ -164,7 +164,7 @@ for (const [i, reg] of regs.entries()) {
   await addScore(
     reg.id,
     points,
-    pick(['Catch', 'Survived', 'Found code', 'Bingo line', 'Best run'], i),
+    pick(['Catch', 'Survived', 'Best run'], i),
     actor,
   );
   if (i % 3 === 0) await addScore(reg.id, 20, 'Bonus', actor);

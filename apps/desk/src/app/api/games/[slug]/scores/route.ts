@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { rollNumberSchema } from '@chai/core';
+import { rollNumberSchema, STATION_DEFAULT_MAX_POINTS, STATION_MAX_POINTS } from '@chai/core';
 import { recordStationRun } from '@chai/db';
 import { authStation, json, limited } from '@/lib/station';
 
@@ -19,7 +19,7 @@ const runSchema = z.object({
   gameSlug: z.string().max(40),
   runId: z.string().regex(/^[0-9a-f]{32}$/),
   rollNo: rollNumberSchema,
-  points: z.number().int().min(0).max(1000),
+  points: z.number().int().min(0).max(Math.max(STATION_DEFAULT_MAX_POINTS, ...Object.values(STATION_MAX_POINTS))),
   progressPercent: extra(0, 100),
   bestAtSeconds: extra(0, 86_400),
   roundSeconds: extra(0, 86_400),
@@ -50,6 +50,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
   }
   const parsed = runSchema.safeParse(raw);
   if (!parsed.success || parsed.data.gameSlug !== slug) {
+    return json({ error: 'That run is not valid.' }, 400);
+  }
+  if (parsed.data.points > (STATION_MAX_POINTS[slug] ?? STATION_DEFAULT_MAX_POINTS)) {
     return json({ error: 'That run is not valid.' }, 400);
   }
   const auth = await authStation(request, slug);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bingoScore, catchValue, hiderScore, huntScore, quizPoints, rankQuiz } from './scoring';
+import { catchValue, hiderScore, quizPoints, rankQuiz } from './scoring';
 
 describe('quizPoints', () => {
   it('pays full points for an instant right answer', () =>
@@ -31,6 +31,4 @@ describe('game scoring', () => {
     expect(catchValue(20, false)).toBe(20);
     expect(catchValue(0, true)).toBe(30);
   });
-  it('adds the hunt bonus for all 25', () => expect(huntScore(25, 2, 1)).toBe(250 + 10 + 50 - 3));
-  it('caps bingo confirmations at 15', () => expect(bingoScore(0, 0, false, 40)).toBe(30));
 });

@@ -43,54 +43,6 @@ export const GAME_SEEDS: GameSeed[] = [
     blurb: 'Teams of five, two rounds of fifteen minutes: hide once, seek once. Your phone is the radar.',
   },
   {
-    slug: 'scavenger-hunt',
-    name: 'Scavenger Hunt',
-    category: 'physical',
-    teamSize: 3,
-    capacity: 90,
-    blurb: 'Twenty-five codes across campus, and every team walks its own route.',
-  },
-  {
-    slug: 'campus-impostor',
-    name: 'Campus Impostor',
-    category: 'physical',
-    teamSize: 1,
-    capacity: 60,
-    blurb: 'Eight crew, two impostors, one meeting bell. Every tag is a phone scan.',
-  },
-  {
-    slug: 'human-bingo',
-    name: 'Human Bingo',
-    category: 'physical',
-    teamSize: 1,
-    capacity: null,
-    blurb: 'Find someone who has done the thing on your card. Lines fill by meeting people.',
-  },
-  {
-    slug: 'chai-rush',
-    name: 'Chai Rush',
-    category: 'mini',
-    teamSize: 1,
-    capacity: null,
-    blurb: 'Catch the sugar cubes, dodge the chillies. One minute, best of three.',
-  },
-  {
-    slug: 'fast-type',
-    name: 'FAST Type',
-    category: 'mini',
-    teamSize: 1,
-    capacity: null,
-    blurb: 'Type the snippet faster than the person next to you.',
-  },
-  {
-    slug: 'memory-match',
-    name: 'Memory Match',
-    category: 'mini',
-    teamSize: 1,
-    capacity: null,
-    blurb: 'Flip, remember, match. The clock is the only opponent.',
-  },
-  {
     // Played on a game-station laptop; the game talks to the games desk API (amendment A8).
     slug: 'skill-issues',
     name: 'Skill Issues',
@@ -100,7 +52,20 @@ export const GAME_SEEDS: GameSeed[] = [
     blurb:
       'A hammer, a pot and a mountain. One timed climb at the game station, one turn each. Based on Getting Over It by Bennett Foddy.',
   },
+  {
+    // Racing station (Game.exe kiosk). Score = metres driven in the timed run.
+    slug: 'donda',
+    name: 'DONDA',
+    category: 'mini',
+    teamSize: 1,
+    capacity: null,
+    blurb: 'A random car, a random track, one timed run. Drive as far as you can. One turn each.',
+  },
 ];
+
+/** Most points one station round may send. DONDA sends metres driven, so it needs more room. */
+export const STATION_MAX_POINTS: Record<string, number> = { donda: 100_000 };
+export const STATION_DEFAULT_MAX_POINTS = 1000;
 
 export const DEFAULT_MARQUEE = ['ACM-W', 'CHAI CONNECT', 'NOV 25', 'FAST-NUCES KARACHI'];
 

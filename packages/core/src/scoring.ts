@@ -44,18 +44,3 @@ export function catchValue(minute: number, converted: boolean): number {
   const value = 60 - 2 * Math.min(Math.max(minute, 0), 20);
   return converted ? Math.round(value / 2) : value;
 }
-
-/** Scavenger Hunt team score. */
-export function huntScore(found: number, firsts: number, hints: number): number {
-  return 10 * found + 5 * firsts + (found >= 25 ? 50 : 0) - 3 * hints;
-}
-
-/** Human Bingo score; confirmations count up to 15. */
-export function bingoScore(
-  squares: number,
-  lines: number,
-  fullCard: boolean,
-  confirmations: number,
-): number {
-  return 10 * squares + 40 * lines + (fullCard ? 150 : 0) + 2 * Math.min(confirmations, 15);
-}

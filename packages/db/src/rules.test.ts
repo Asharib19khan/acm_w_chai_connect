@@ -25,24 +25,24 @@ describe('two-games rule', () => {
     const r = await db.register({
       rollNo: '25K-5570',
       department: 'CS',
-      gameIds: [await game('hide-and-seek'), await game('fast-type')],
+      gameIds: [await game('hide-and-seek'), await game('skill-issues')],
     });
     expect(r.games).toHaveLength(2);
   });
 
-  it('refuses a second physical game, even later', async () => {
+  it('refuses a second minigame, even later', async () => {
     await db.register({
       rollNo: '25K-5570',
       department: 'CS',
-      gameIds: [await game('hide-and-seek')],
+      gameIds: [await game('skill-issues')],
     });
     await expect(
       db.register({
         rollNo: '25K-5570',
         department: 'CS',
-        gameIds: [await game('campus-impostor')],
+        gameIds: [await game('donda')],
       }),
-    ).rejects.toThrow(/already in Hide & Seek/);
+    ).rejects.toThrow(/already in Skill Issues/);
   });
 
   it('refuses two of the same category in one request', async () => {
@@ -50,13 +50,13 @@ describe('two-games rule', () => {
       db.register({
         rollNo: '25K-5570',
         department: 'CS',
-        gameIds: [await game('chai-rush'), await game('fast-type')],
+        gameIds: [await game('skill-issues'), await game('donda')],
       }),
     ).rejects.toThrow(/one minigame at most|one physical game/);
   });
 
   it('holds under parallel requests', async () => {
-    const [a, b] = [await game('hide-and-seek'), await game('human-bingo')];
+    const [a, b] = [await game('skill-issues'), await game('donda')];
     const results = await Promise.allSettled([
       db.register({ rollNo: '24K-0001', department: 'EE', gameIds: [a] }),
       db.register({ rollNo: '24K-0001', department: 'EE', gameIds: [b] }),
@@ -68,7 +68,7 @@ describe('two-games rule', () => {
     await db.register({
       rollNo: '25K-5570',
       department: 'CS',
-      gameIds: [await game('hide-and-seek')],
+      gameIds: [await game('skill-issues')],
     });
     const reg = (await db.listRegistrations())[0]!;
     await db.actOnRegistration(reg.id, { type: 'withdraw' }, actor);
@@ -76,7 +76,7 @@ describe('two-games rule', () => {
       db.register({
         rollNo: '25K-5570',
         department: 'CS',
-        gameIds: [await game('campus-impostor')],
+        gameIds: [await game('donda')],
       }),
     ).resolves.toBeTruthy();
   });
@@ -265,7 +265,7 @@ describe('game stations (Skill Issues)', () => {
     const skill = await game('skill-issues');
     const { key, station } = await db.createStation(skill, 'Laptop 1', actor);
     expect(await db.stationFromKey(key, 'skill-issues')).not.toBeNull();
-    expect(await db.stationFromKey(key, 'fast-type')).toBeNull();
+    expect(await db.stationFromKey(key, 'hide-and-seek')).toBeNull();
     expect(await db.stationFromKey('ccst_wrongwrongwrongwrongwrong', 'skill-issues')).toBeNull();
     await db.revokeStation(station.id, actor);
     expect(await db.stationFromKey(key, 'skill-issues')).toBeNull();
@@ -310,5 +310,22 @@ describe('game stations (Skill Issues)', () => {
     });
     expect(await db.leaderboard(skill)).toHaveLength(0);
     expect((await db.listStations())[0]!.unmatchedRuns).toBe(1);
+  });
+
+  it('DONDA: offline list, one turn, metres as points, late upload still counts', async () => {
+    const donda = await game('donda');
+    await db.register({ rollNo: '25K-1234', department: 'CS', gameIds: [donda] });
+    const { key } = await db.createStation(donda, 'Racing rig', actor);
+    expect(await db.stationFromKey(key, 'skill-issues')).toBeNull();
+    const auth = (await db.stationFromKey(key, 'donda'))!;
+
+    expect(await db.stationPlayerList(donda)).toEqual(['25K-1234']);
+    // Played offline: the desk never saw the Start, only the upload once Wi-Fi is back.
+    expect(await db.recordStationRun(auth, run({ points: 4321, runId: 'b'.repeat(32) }))).toMatchObject({
+      counted: true,
+    });
+    expect((await db.leaderboard(donda))[0]!.total).toBe(4321);
+    // The upload uses up the turn, so the same roll can't start again online.
+    expect(await db.stationCheckPlayer(donda, '25K-1234')).toBe('already_played');
   });
 });

@@ -466,7 +466,7 @@ function Groups({
   const toast = useToast();
   const router = useRouter();
   const [perRound, setPerRound] = useState(
-    game.slug === 'hide-and-seek' ? 20 : game.slug === 'campus-impostor' ? 10 : 30,
+    game.slug === 'hide-and-seek' ? 20 : 30,
   );
   const [pending, start] = useTransition();
   const checked = rows.filter((r) => r.status === 'checked_in');
@@ -597,13 +597,9 @@ function Scores({ rows, onOpen }: { rows: LeaderRow[]; onOpen: (id: string) => v
 }
 
 const PRESETS: [number, string][] = [
-  [10, 'Found code'],
   [20, 'Catch'],
-  [40, 'Bingo line'],
   [25, 'Survived'],
-  [5, 'First to scan'],
   [-30, 'Left the arena'],
-  [-3, 'Hint used'],
 ];
 
 function PlayerDrawer({ reg, onClose }: { reg: RegistrationRow | null; onClose: () => void }) {

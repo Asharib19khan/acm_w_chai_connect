@@ -83,6 +83,8 @@ export function StationPanel({
   }, []);
   const active = stations.filter((s) => !s.revokedAt);
   const server = game.category === 'physical';
+  // DONDA's kiosk takes the desk address and key in its own Settings screen, not a config file.
+  const kiosk = game.slug === 'donda';
 
   const create = () =>
     start(async () => {
@@ -175,6 +177,18 @@ export function StationPanel({
               folder and restart it. The roster then syncs by itself.
             </li>
           </ol>
+        ) : kiosk ? (
+          <ol className="text-fg-muted marker:text-accent-strong flex list-decimal flex-col gap-1.5 pl-5 text-sm">
+            <li>Name the racing laptop and create a key.</li>
+            <li>
+              On the laptop, open DONDA → Settings (staff PIN) and paste the desk address and the
+              key, then Save.
+            </li>
+            <li>
+              The player list then saves itself for offline use, and results sent while offline go
+              up when the internet is back.
+            </li>
+          </ol>
         ) : (
         <ol className="text-fg-muted marker:text-accent-strong flex list-decimal flex-col gap-1.5 pl-5 text-sm">
           <li>Name the laptop and create a key.</li>
@@ -230,7 +244,13 @@ export function StationPanel({
             <code className="bg-wash text-fg block rounded-xl px-4 py-3 font-mono text-xs break-all">
               {created.key}
             </code>
-            <Button
+            {kiosk && (
+              <p className="text-fg-muted text-sm">
+                Desk address:{' '}
+                <span className="text-fg font-mono text-xs break-all">{window.location.origin}</span>
+              </p>
+            )}
+            {!kiosk && <Button
               onClick={() =>
                 server
                   ? download('.env.local', envFor(window.location.origin, created.key))
@@ -241,7 +261,7 @@ export function StationPanel({
               }
             >
               {server ? 'Download .env.local' : 'Download acmw_config.json'}
-            </Button>
+            </Button>}
             <Button
               variant="secondary"
               onClick={() =>
@@ -256,7 +276,9 @@ export function StationPanel({
             <p className="text-fg-muted text-sm">
               {server
                 ? 'Put the file in the game’s folder, then restart the game server.'
-                : 'Put the file next to the game’s .exe on the laptop, then restart the game.'}
+                : kiosk
+                  ? 'Paste both into DONDA → Settings on the racing laptop and press Save.'
+                  : 'Put the file next to the game’s .exe on the laptop, then restart the game.'}
             </p>
           </div>
         )}
