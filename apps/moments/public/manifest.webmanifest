@@ -2,7 +2,7 @@
   "id": "/",
   "name": "ACM-W · Moments",
   "short_name": "Moments",
-  "description": "Send your photos and videos from ACM-W Chai Connect 2026.",
+  "description": "Send your photos and videos to ACM-W.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

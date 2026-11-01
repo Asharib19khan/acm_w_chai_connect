@@ -10,8 +10,8 @@ import './globals.css';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: { default: 'Share moments · Chai Connect', template: '%s · Chai Connect' },
-  description: 'Send your photos and videos from ACM-W Chai Connect 2026.',
+  title: { default: 'Share the moment · ACM-W', template: '%s · ACM-W' },
+  description: 'Send your photos and videos to ACM-W.',
   manifest: '/manifest.webmanifest',
   // iPhone home-screen app: own window, own name and icon.
   appleWebApp: { capable: true, title: 'Moments', statusBarStyle: 'default' },
