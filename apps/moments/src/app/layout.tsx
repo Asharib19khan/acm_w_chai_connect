@@ -1,4 +1,4 @@
-import { PALETTE, ToastProvider, Wordmark } from '@chai/ui';
+import { PALETTE, ToastProvider } from '@chai/ui';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { fontVariables } from './fonts';
@@ -39,18 +39,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           <ToastProvider>
             <IntroGate>
-              <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 pt-5 sm:px-8 sm:pt-8">
-                <Wordmark compact className="text-fg text-[1.05rem]" />
-                <span className="font-display text-fg text-[1.05rem] font-black tracking-[-0.02em]">
+              <header className="mx-auto flex w-full max-w-3xl items-center justify-start px-4 pt-5 sm:px-8 sm:pt-8">
+                {/* This app's logo is ACM-W (the other Chai Connect apps use the Chai Connect wordmark). */}
+                <a
+                  href="/"
+                  aria-label="ACM-W, Share the moment home"
+                  className="font-display text-fg text-[1.35rem] leading-none font-black tracking-[-0.02em]"
+                >
                   ACM-<span className="text-accent">W</span>
-                </span>
+                </a>
               </header>
               <main id="main" className="flex-1">
                 {children}
               </main>
-              <footer className="text-fg-subtle mx-auto w-full max-w-3xl px-4 pt-20 pb-8 text-xs sm:px-8">
-                ACM-W Chai Connect · FAST-NUCES Karachi
-              </footer>
             </IntroGate>
           </ToastProvider>
         </ClickSpark>
