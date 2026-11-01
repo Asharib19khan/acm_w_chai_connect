@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Marquee, Wordmark } from '@chai/ui';
+import { Marquee } from '@chai/ui';
 import { getSettings } from '@chai/db';
 
 export async function TopStrip() {
@@ -28,12 +28,16 @@ function StarGlyph() {
   );
 }
 
-/** Just the wordmark. The student site has no menu: every page is reached from home or a QR code. */
+/** Just the logo, ACM-W. The student site has no menu: every page is reached from home or a QR code. */
 export function SiteHeader() {
   return (
     <header className="mx-auto flex w-full max-w-5xl items-center px-4 py-4 sm:px-8">
-      <Link href="/" className="text-fg rounded-lg" aria-label="Chai Connect home">
-        <Wordmark compact className="text-[1.05rem]" />
+      <Link
+        href="/"
+        className="font-display text-fg rounded-lg text-[1.35rem] leading-none font-black tracking-[-0.02em]"
+        aria-label="ACM-W, Chai Connect home"
+      >
+        ACM-<span className="text-accent">W</span>
       </Link>
     </header>
   );
