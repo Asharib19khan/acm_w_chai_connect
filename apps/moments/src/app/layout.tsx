@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { fontVariables } from './fonts';
 import { ClickSpark } from './click-spark';
 import { IntroGate } from './intro';
+import { InstallButton } from './install-button';
 import './globals.css';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,9 @@ export const metadata: Metadata = {
   title: { default: 'Share moments · Chai Connect', template: '%s · Chai Connect' },
   description: 'Send your photos and videos from ACM-W Chai Connect 2026.',
   manifest: '/manifest.webmanifest',
+  // iPhone home-screen app: own window, own name and icon.
+  appleWebApp: { capable: true, title: 'Moments', statusBarStyle: 'default' },
+  icons: { apple: '/apple-icon.png' },
 };
 
 export const viewport: Viewport = {
@@ -39,7 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           <ToastProvider>
             <IntroGate>
-              <header className="mx-auto flex w-full max-w-3xl items-center justify-start px-4 pt-5 sm:px-8 sm:pt-8">
+              <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 pt-5 sm:px-8 sm:pt-8">
                 {/* This app's logo is ACM-W (the other Chai Connect apps use the Chai Connect wordmark). */}
                 <a
                   href="/"
@@ -48,6 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 >
                   ACM-<span className="text-accent">W</span>
                 </a>
+                <InstallButton />
               </header>
               <main id="main" className="flex-1">
                 {children}
