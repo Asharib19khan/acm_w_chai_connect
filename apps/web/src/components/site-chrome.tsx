@@ -35,9 +35,11 @@ export function SiteHeader() {
       <Link
         href="/"
         className="font-display text-fg rounded-lg text-[1.35rem] leading-none font-black tracking-[-0.02em]"
-        aria-label="ACM-W, Chai Connect home"
+        aria-label="ACM-W x Chai Connect home"
       >
         ACM-<span className="text-accent">W</span>
+        <span className="text-fg-subtle mx-2 font-semibold">×</span>
+        Chai Connect
       </Link>
     </header>
   );
