@@ -30,7 +30,6 @@ function connect(): Sql {
   const local = url.includes('127.0.0.1') || url.includes('localhost');
   return postgres(url, {
     prepare: false,
-    fetch_types: false,
     max: local ? 10 : 5,
     idle_timeout: 20,
     connect_timeout: 15,

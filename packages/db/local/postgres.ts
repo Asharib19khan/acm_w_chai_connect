@@ -49,7 +49,7 @@ export async function migrate(url: string): Promise<string[]> {
       if (done.has(file)) continue;
       const body = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
       await sql.begin(async (t) => {
-        await t.unsafe(body);
+        await t.unsafe(body).simple(); // several statements per file: simple protocol
         await t`insert into _local_migrations (name) values (${file})`;
       });
       applied.push(file);
