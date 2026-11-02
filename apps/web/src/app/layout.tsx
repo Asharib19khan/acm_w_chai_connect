@@ -1,7 +1,15 @@
-import { PALETTE, ToastProvider } from '@chai/ui';
+import { ToastProvider } from '@chai/ui';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { IntroGate } from '@/components/intro';
+import { BreathingType } from '@/components/breathing-type';
+import { ChaiPet } from '@/components/chai-pet';
+import { GamesNight } from '@/components/games-night';
+import { JoinToasts } from '@/components/join-toasts';
+import { LiveReaders } from '@/components/live-readers';
+import { NightShade } from '@/components/night-shade';
+import { NoticeYou } from '@/components/notice-you';
+import { SoundWiring } from '@/components/sound-wiring';
 import { SiteFooter, SiteHeader, TopStrip } from '@/components/site-chrome';
 import { fontVariables } from './fonts';
 import './globals.css';
@@ -11,12 +19,12 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: { default: 'Chai Connect', template: '%s · Chai Connect' },
-  description: 'ACM-W Chai Connect at FAST-NUCES Karachi, 25 November 2026.',
+  description: 'ACM-W Chai Connect at FAST-NUCES Karachi, 27 November 2026.',
   manifest: '/manifest.webmanifest',
 };
 
 export const viewport: Viewport = {
-  themeColor: PALETTE.canvas,
+  themeColor: '#000000',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -40,6 +48,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {children}
             </main>
             <SiteFooter />
+            <JoinToasts />
+            <NoticeYou />
+            <GamesNight />
+            <ChaiPet />
+            <LiveReaders />
+            <NightShade />
+            <BreathingType />
+            <SoundWiring />
           </IntroGate>
         </ToastProvider>
       </body>

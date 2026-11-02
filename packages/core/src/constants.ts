@@ -67,7 +67,7 @@ export const GAME_SEEDS: GameSeed[] = [
 export const STATION_MAX_POINTS: Record<string, number> = { donda: 100_000 };
 export const STATION_DEFAULT_MAX_POINTS = 1000;
 
-export const DEFAULT_MARQUEE = ['ACM-W', 'CHAI CONNECT', 'NOV 25', 'FAST-NUCES KARACHI'];
+export const DEFAULT_MARQUEE = ['ACM-W', 'CHAI CONNECT', 'NOV 27', 'FAST-NUCES KARACHI'];
 
 /** Placeholder list until the VP sends the real companies (blueprint section 20). */
 export const DEFAULT_COMPANIES = [

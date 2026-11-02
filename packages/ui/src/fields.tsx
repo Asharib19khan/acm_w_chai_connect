@@ -120,7 +120,7 @@ export function Switch({ checked, onChange, label, description, disabled }: Swit
         <span
           className={cn(
             'inline-block size-5 rounded-full shadow-sm transition-transform duration-200 ease-out',
-            checked ? 'translate-x-6 bg-white' : 'bg-fg-muted translate-x-1',
+            checked ? 'bg-surface translate-x-6' : 'bg-fg-muted translate-x-1',
           )}
         />
       </button>

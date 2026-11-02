@@ -490,7 +490,7 @@ function QuestionCard({
               <span
                 className={cn(
                   'grid size-8 shrink-0 place-items-center rounded-full font-mono text-sm',
-                  isPicked ? 'bg-ink text-plum' : 'bg-wash text-fg-muted',
+                  isPicked ? 'bg-on-accent text-accent' : 'bg-wash text-fg-muted',
                 )}
               >
                 {String.fromCharCode(65 + i)}

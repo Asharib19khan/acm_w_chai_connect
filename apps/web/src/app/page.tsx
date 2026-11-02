@@ -1,116 +1,111 @@
-import Link from 'next/link';
 import { getControl } from '@chai/db';
-import { ChaiCup, LiveDot } from '@chai/ui';
+import { HeroTitle } from '@/components/hero-title';
+import { SecretTrigger } from '@/components/secret-trigger';
+import { ScrollScenes, type Scene } from '@/components/scroll-scenes';
+import { Marquee } from '@chai/ui';
+import { LiveOrCountdown } from '@/components/live-panel';
 import { HeroReveal } from '@/components/hero-reveal';
-
-interface Action {
-  href: string;
-  title: string;
-  note: string;
-  live?: boolean;
-}
+import { Burst, CrossTapes, Kettle } from '@/components/loud';
 
 export default async function HomePage() {
   const control = await getControl();
   const quizLive = control.phase !== 'locked' && control.phase !== 'ended';
 
-  const actions: Action[] = [
+  const scenes: Scene[] = [
     ...(quizLive
       ? [
           {
             href: '/quiz',
-            title: 'Quiz is open',
+            title: 'Quiz is live',
             note: 'Join now. It starts on the big screen’s signal.',
+            cta: 'Join the quiz',
             live: true,
           },
         ]
       : []),
     {
       href: '/ask',
-      title: 'Ask a question',
+      title: 'Ask anything',
       note: 'Too shy to ask out loud? Ask here. Your name is optional.',
+      cta: 'Ask now',
     },
-    { href: '/cv', title: 'Drop your CV', note: 'Pick the fields you want it considered for.' },
+    {
+      href: '/cv',
+      title: 'Drop your CV',
+      note: 'Pick the fields you want it considered for.',
+      cta: 'Upload CV',
+    },
     {
       href: '/games',
       title: 'Join the games',
       note: 'One physical game and one minigame per student.',
+      cta: 'Pick a game',
     },
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-8">
-      <section className="pt-6 pb-12 sm:pt-12 sm:pb-16">
-        <HeroReveal>
-          <h1
-            aria-label="Chai Connect"
-            className="font-display text-fg leading-[0.86] font-black tracking-[-0.045em]"
-          >
-            <span className="flex items-end gap-[0.12em] text-[clamp(4rem,20vw,11.5rem)]">
-              Chai
-              <ChaiCup className="mb-[0.06em] h-[0.9em] w-auto shrink-0" />
-            </span>
-            <span className="text-accent-strong block text-[clamp(2.95rem,14.8vw,8.5rem)]">
-              Connect
-            </span>
-          </h1>
+    <div className="mx-auto max-w-6xl px-4 sm:px-8">
+      <section className="relative pt-4 sm:pt-8">
+        {/* Giant outlined year behind everything. */}
+        <span
+          aria-hidden
+          className="cc-outline-white font-display pointer-events-none absolute -top-4 right-[-6%] text-[34vw] leading-none font-black tracking-[-0.06em] select-none sm:text-[min(30vw,24rem)]"
+        >
+          27
+        </span>
+        <div className="relative">
+          <HeroTitle lines={TITLE} />
+          <SecretTrigger className="absolute -top-1 right-0 size-24 cursor-pointer sm:top-0 sm:right-4 sm:size-40">
+            <Kettle className="relative size-full" />
+          </SecretTrigger>
+        </div>
+        <HeroReveal delay={0.15}>
+          <div className="relative mt-6 grid items-center gap-5 sm:mt-10">
+            <div className="flex flex-col gap-5">
+              <p
+                data-pet-ledge
+                className="font-display max-w-2xl text-[clamp(1.35rem,5.4vw,2.6rem)] leading-[1.02] font-black tracking-[-0.035em] uppercase"
+              >
+                Ask what you’re <span className="text-accent">too shy</span> to ask. Hand your CV to
+                the <span className="cc-outline">people hiring</span>. Play across campus.
+              </p>
+              <p
+                data-pet-ledge
+                className="bg-accent font-display w-fit -rotate-2 px-3 py-2 text-sm leading-tight font-black text-[#000] uppercase sm:text-lg"
+              >
+                27 November
+                <br />
+                FAST-NUCES Karachi
+              </p>
+            </div>
+          </div>
         </HeroReveal>
-        <HeroReveal delay={0.12}>
-          <p className="text-fg-muted mt-7 max-w-xl text-lg leading-relaxed sm:mt-10 sm:text-xl">
-            Ask what you’re too shy to ask, hand your CV to the people hiring, and play across
-            campus. 25 November, FAST-NUCES Karachi.
-          </p>
+        <HeroReveal delay={0.25}>
+          <div data-pet-ledge className="mt-8 sm:mt-12">
+            <LiveOrCountdown />
+          </div>
         </HeroReveal>
       </section>
 
-      <HeroReveal delay={0.22}>
-        <ul className="border-line border-t" aria-label="What you can do">
-          {actions.map((a) => (
-            <li key={a.href} className="border-line border-b">
-              <ActionRow {...a} />
-            </li>
-          ))}
-        </ul>
-      </HeroReveal>
+      <CrossTapes a={TAPE_A} b={TAPE_B} />
+
+      <ScrollScenes scenes={scenes} />
+
+      <div
+        aria-hidden
+        className="relative left-1/2 mt-20 w-screen -translate-x-1/2 overflow-hidden"
+      >
+        <Marquee
+          items={['Ask it', 'Drop it', 'Play it', 'Connect']}
+          speed={90}
+          className="cc-outline font-display h-[1.1em] text-[clamp(4rem,16vw,12rem)] leading-none font-black tracking-[-0.05em] uppercase"
+          separator={<Burst className="text-accent mx-4 size-[0.4em]" />}
+        />
+      </div>
     </div>
   );
 }
 
-function ActionRow({ href, title, note, live }: Action) {
-  return (
-    <Link
-      href={href}
-      className="group relative -mx-4 flex min-h-24 items-center gap-5 overflow-hidden px-4 py-5 sm:-mx-6 sm:min-h-28 sm:px-6"
-    >
-      {/* Plum pours in from the left on hover and press. */}
-      <span
-        aria-hidden
-        className="bg-accent absolute inset-0 origin-left scale-x-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-x-100 group-active:scale-x-100"
-      />
-      <span className="relative flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="font-display text-fg flex items-center gap-3 text-[clamp(1.6rem,6.4vw,2.9rem)] leading-none font-black tracking-[-0.035em]">
-          {live && <LiveDot className="size-2.5" />}
-          {title}
-        </span>
-        <span className="text-fg-muted group-hover:text-fg text-[0.95rem] transition-colors sm:text-base">
-          {note}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className="bg-brand text-on-brand relative grid size-11 shrink-0 place-items-center rounded-full transition-transform duration-300 group-hover:translate-x-1 sm:size-13"
-      >
-        <svg viewBox="0 0 24 24" className="size-5">
-          <path
-            d="M5 12h14m-6-6 6 6-6 6"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
-    </Link>
-  );
-}
+const TAPE_A = ['Ask anything', 'Drop your CV', 'Join the games', 'Chai Connect'];
+const TAPE_B = ['ACM-W', '27.11.2026', 'FAST-NUCES Karachi', 'No shy questions'];
+const TITLE = ['CHAI', 'CONNECT'];

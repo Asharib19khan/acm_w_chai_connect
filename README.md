@@ -1,6 +1,6 @@
 # Chai Connect
 
-Web platform for **ACM-W Chai Connect**, FAST-NUCES Karachi, 25 November 2026.
+Web platform for **ACM-W Chai Connect**, FAST-NUCES Karachi, 27 November 2026.
 
 Four separate sites:
 

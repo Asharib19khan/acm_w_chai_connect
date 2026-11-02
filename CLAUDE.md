@@ -1,6 +1,6 @@
 # CLAUDE.md — Chai Connect
 
-Event platform for **ACM-W Chai Connect**, FAST-NUCES Karachi, **25 November 2026**.
+Event platform for **ACM-W Chai Connect**, FAST-NUCES Karachi, **27 November 2026**.
 The full spec is `docs/BLUEPRINT.md`. Before any task, read the blueprint section(s) named in the
 prompt. **Blueprint section 0 (Amendments) overrides every later section.** If the blueprint and
 this file disagree, stop and ask.

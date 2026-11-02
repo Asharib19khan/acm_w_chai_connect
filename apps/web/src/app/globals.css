@@ -14,3 +14,452 @@
     display: none !important;
   }
 }
+
+/*
+ * Student site only: black and hot pink, loud (1 Nov). The shared tokens are role-based, so flipping the
+ * roles here turns every page and shared component monochrome; the other apps keep their palette.
+ */
+:root {
+  color-scheme: light;
+  --cc-canvas: #fff5fb;
+  --cc-canvas-2: #ffe8f6;
+  --cc-surface: #ffffff;
+  --cc-surface-2: #fff0f9;
+  --cc-fg: #000000;
+  --cc-fg-muted: rgb(0 0 0 / 0.72);
+  --cc-fg-subtle: rgb(0 0 0 / 0.6);
+  --cc-line: rgb(0 0 0 / 0.12);
+  --cc-wash: rgb(0 0 0 / 0.04);
+  --cc-wash-2: rgb(0 0 0 / 0.08);
+  --cc-edge: rgb(0 0 0 / 0.2);
+  --cc-edge-strong: rgb(255 79 216 / 0.7);
+  --cc-brand: #ff4fd8;
+  --cc-brand-2: #ff8ae6;
+  --cc-on-brand: #000000;
+  --cc-accent: #ff4fd8;
+  --cc-accent-soft: rgb(255 79 216 / 0.18);
+  --cc-accent-strong: #ff4fd8;
+  --cc-on-accent: #000000;
+  --cc-ok: #0b6e4a;
+  --cc-ok-soft: rgb(123 224 181 / 0.2);
+  --cc-danger: #b1261c;
+  --cc-danger-soft: rgb(255 138 125 / 0.2);
+  --cc-shadow: rgb(255 79 216 / 0.35);
+}
+
+/* The chai glass, drawn in white and greys. */
+.cc-cup {
+  --cc-ink: #000000;
+  --cc-plum: #ff4fd8;
+  --cc-petal: #ffe0f4;
+  --cc-grape: #8a8a8a;
+}
+
+html {
+  background: #fff5fb;
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+}
+
+::selection {
+  background: #ff4fd8;
+  color: #000;
+}
+
+/* Fine film grain over the whole site: one tiny tiled SVG, no images to download. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Loud extras for the home page. */
+@keyframes cc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cc-spin {
+  animation: cc-spin 14s linear infinite;
+}
+.cc-outline {
+  color: var(--cc-canvas);
+  -webkit-text-stroke: 4px #ff4fd8;
+  paint-order: stroke fill;
+}
+.cc-outline-white {
+  color: var(--cc-canvas);
+  -webkit-text-stroke: 3px rgb(0 0 0 / 0.14);
+  paint-order: stroke fill;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-spin {
+    animation: none;
+  }
+}
+.cc-outline-black {
+  color: #ff4fd8;
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
+}
+.cc-ghost {
+  color: var(--cc-canvas);
+  -webkit-text-stroke: 4px rgb(255 79 216 / 0.45);
+  paint-order: stroke fill;
+}
+.cc-ghost-black {
+  color: #ff4fd8;
+  -webkit-text-stroke: 4px rgb(0 0 0 / 0.25);
+  paint-order: stroke fill;
+}
+
+/*
+ * Student-site forms: thick black outlines, square corners, a hard pink shadow on focus, loud
+ * labels, sticker chips and chunky buttons. Scoped to <main> forms so the shared components keep
+ * their look in the other apps.
+ */
+main form input:not([type='file']):not([type='checkbox']):not([type='radio']),
+main form textarea,
+main form select {
+  border-radius: 0 !important;
+  box-shadow: inset 0 0 0 3px #000 !important;
+  background: #fff !important;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition:
+    box-shadow 0.18s,
+    transform 0.18s;
+}
+main form input:not([type='file']):not([type='checkbox']):not([type='radio']):focus,
+main form textarea:focus,
+main form select:focus {
+  box-shadow:
+    inset 0 0 0 3px #000,
+    6px 6px 0 0 #ff4fd8 !important;
+  transform: translate(-2px, -2px);
+}
+main form [aria-invalid='true'] {
+  box-shadow:
+    inset 0 0 0 3px #b1261c,
+    6px 6px 0 0 #b1261c !important;
+}
+main form label:not(:has(input, button)),
+main form legend {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+main form button[aria-pressed] {
+  border-radius: 0 !important;
+  box-shadow: inset 0 0 0 2.5px #000 !important;
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  transition:
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.15s;
+}
+main form button[aria-pressed='true'] {
+  background: #ff4fd8 !important;
+  color: #000 !important;
+  transform: rotate(-3deg) scale(1.06);
+  box-shadow:
+    inset 0 0 0 2.5px #000,
+    3px 3px 0 0 #000 !important;
+}
+main form button[type='submit'],
+main .cc-cta {
+  border-radius: 0 !important;
+  background: #000 !important;
+  color: #ff4fd8 !important;
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  box-shadow: 6px 6px 0 0 #ff4fd8 !important;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+main form button[type='submit']:not(:disabled):hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 0 #ff4fd8 !important;
+}
+main form button[type='submit']:not(:disabled):active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 #ff4fd8 !important;
+}
+main form button[type='submit']:disabled {
+  background: rgb(0 0 0 / 0.2) !important;
+  color: rgb(0 0 0 / 0.5) !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Breathing type: big headings follow the scroll speed (see breathing-type.tsx). Uses the variable
+ * Unbounded weight axis, so it costs nothing extra to download.
+ */
+main h1,
+main h2,
+.cc-breathe {
+  font-variation-settings: 'wght' var(--cc-wght, 900);
+  transform: skewX(var(--cc-skew, 0deg));
+  transform-origin: left bottom;
+}
+@media (prefers-reduced-motion: reduce) {
+  main h1,
+  main h2,
+  .cc-breathe {
+    font-variation-settings: normal;
+    transform: none;
+  }
+}
+
+/* Chai pet bits. */
+.cc-pet-steam {
+  animation: cc-steam 2.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: bottom;
+}
+@keyframes cc-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scaleY(0.7);
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(1.1);
+  }
+}
+.cc-pet-z {
+  animation: cc-z 1.8s ease-in-out infinite;
+}
+@keyframes cc-z {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(6px, -8px);
+  }
+}
+.cc-pet-heart {
+  position: fixed;
+  z-index: 78;
+  pointer-events: none;
+  color: #ff4fd8;
+  font-size: 22px;
+  font-weight: 900;
+  text-shadow: 2px 2px 0 #000;
+  animation: cc-heart 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes cc-heart {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -18px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60px) scale(0.9);
+  }
+}
+.cc-pet-bubble {
+  animation: cc-bubble 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes cc-bubble {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.85) rotate(2deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-pet-steam,
+  .cc-pet-z,
+  .cc-pet-bubble {
+    animation: none;
+  }
+}
+.cc-pet-drop {
+  position: fixed;
+  z-index: 78;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50% 50% 50% 0;
+  background: #ff4fd8;
+  box-shadow: 0 0 0 1px #000;
+  pointer-events: none;
+}
+
+/* Hero title: solid letters with a tilt-driven pink 3D edge (see hero-title.tsx). */
+.font-hero {
+  font-family: var(--font-hero), var(--font-unbounded), sans-serif;
+}
+main h1.cc-hero {
+  --ex: 0;
+  --ey: 1.2;
+  font-variation-settings: 'wght' 800;
+  font-weight: 800;
+  transform: none;
+}
+.cc-hero-letter {
+  --press: 0;
+  -webkit-text-stroke: 0.02em #000;
+  text-shadow:
+    calc(var(--ex) * 0.02em) calc(var(--ey) * 0.02em) 0 #ff4fd8,
+    calc(var(--ex) * 0.04em) calc(var(--ey) * 0.04em) 0 #ff4fd8,
+    calc(var(--ex) * 0.06em) calc(var(--ey) * 0.06em) 0 #ff4fd8,
+    calc(var(--ex) * 0.08em) calc(var(--ey) * 0.08em) 0 #000;
+  translate: 0 calc(var(--press) * 0.05em);
+  transition: translate 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+.text-accent .cc-hero-letter {
+  text-shadow:
+    calc(var(--ex) * 0.02em) calc(var(--ey) * 0.02em) 0 #000,
+    calc(var(--ex) * 0.04em) calc(var(--ey) * 0.04em) 0 #000,
+    calc(var(--ex) * 0.06em) calc(var(--ey) * 0.06em) 0 #000;
+}
+.cc-boing {
+  animation: cc-boing 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes cc-boing {
+  0% {
+    scale: 1 1;
+  }
+  20% {
+    scale: 1.25 0.75;
+  }
+  45% {
+    scale: 0.85 1.2;
+    rotate: -6deg;
+  }
+  70% {
+    scale: 1.06 0.95;
+    rotate: 0deg;
+  }
+  100% {
+    scale: 1 1;
+  }
+}
+
+/* The pet's kettle. */
+.cc-kettle-steam {
+  animation: cc-kettle-steam 2.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: bottom;
+}
+@keyframes cc-kettle-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(1.15);
+  }
+}
+.cc-kettle {
+  animation: cc-kettle-bob 3.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+@keyframes cc-kettle-bob {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(3deg) translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-kettle,
+  .cc-kettle-steam,
+  .cc-boing {
+    animation: none;
+  }
+}
+
+.cc-rang {
+  position: fixed;
+  z-index: 78;
+  pointer-events: none;
+  filter: drop-shadow(0 0 1px #fff);
+}
+
+/* Games page: black and pink (GamesNight toggles html.cc-dark). */
+html.cc-dark {
+  color-scheme: dark;
+  background: #000;
+  --cc-canvas: #000000;
+  --cc-canvas-2: #0d0d0d;
+  --cc-surface: #0d0d0d;
+  --cc-surface-2: #161616;
+  --cc-fg: #ffffff;
+  --cc-fg-muted: rgb(255 255 255 / 0.74);
+  --cc-fg-subtle: rgb(255 255 255 / 0.6);
+  --cc-line: rgb(255 79 216 / 0.28);
+  --cc-wash: rgb(255 255 255 / 0.05);
+  --cc-wash-2: rgb(255 255 255 / 0.1);
+  --cc-edge: rgb(255 79 216 / 0.4);
+  --cc-ok: #7be0b5;
+  --cc-danger: #ff8a7d;
+}
+html.cc-dark body {
+  transition: background-color 0.6s;
+}
+html.cc-dark main form input:not([type='file']):not([type='checkbox']):not([type='radio']),
+html.cc-dark main form textarea,
+html.cc-dark main form select {
+  background: #0d0d0d !important;
+  color: #fff;
+  box-shadow: inset 0 0 0 3px #ff4fd8 !important;
+}
+html.cc-dark main form input:focus,
+html.cc-dark main form select:focus {
+  box-shadow:
+    inset 0 0 0 3px #ff4fd8,
+    6px 6px 0 0 #fff !important;
+}
+html.cc-dark main form button[type='submit'] {
+  background: #ff4fd8 !important;
+  color: #000 !important;
+  box-shadow: 6px 6px 0 0 #fff !important;
+}
+html.cc-dark main [role='radio'] .ring-\[\#000\] {
+  --tw-ring-color: #ff4fd8;
+}
+html.cc-dark main [role='radio'][aria-checked='true'] {
+  color: #000;
+}
+html.cc-dark main [role='radio'][aria-checked='true'] .text-fg,
+html.cc-dark main [role='radio'][aria-checked='true'] .text-fg-muted {
+  color: #000;
+}

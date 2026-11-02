@@ -1,5 +1,6 @@
 'use client';
 
+import { Celebrate } from '@/components/celebrate';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRef, useState, useTransition, type DragEvent } from 'react';
 import { LIMITS } from '@chai/core';
@@ -77,6 +78,7 @@ export function CvForm({ companies }: { companies: string[] }) {
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="border-line flex flex-col items-start gap-5 border-t pt-10"
       >
+        <Celebrate word="Dropped!" signal="done:cv" />
         <ChaiCup className="h-20 w-auto" />
         <h2 className="font-display text-fg text-3xl font-bold">CV received.</h2>
         <p className="text-fg-muted max-w-md">
@@ -155,7 +157,7 @@ export function CvForm({ companies }: { companies: string[] }) {
           onDrop={onDrop}
           aria-describedby="cv-file-help"
           className={cn(
-            'group relative flex min-h-36 w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-3xl border-[1.5px] border-dashed px-6 py-8 text-center transition-colors duration-200',
+            'group relative flex min-h-36 w-full flex-col items-center justify-center gap-2 overflow-hidden border-[3px] border-dashed border-[#000] bg-white px-6 py-8 text-center transition-colors duration-200',
             dragging
               ? 'border-accent-strong bg-accent-soft'
               : errors.file

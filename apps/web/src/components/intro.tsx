@@ -3,9 +3,9 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Scramble } from './scramble';
 
 const SEEN_KEY = 'cc_intro_seen';
-const ease = [0.16, 1, 0.3, 1] as const;
 
 const IntroDone = createContext(true);
 
@@ -15,8 +15,8 @@ export function useIntroDone() {
 }
 
 /**
- * Startup animation, once per browser session: an empty glass fills with chai, steam rises, the
- * name settles in, and the curtain lifts. Tap anywhere to skip. Skipped entirely on the quiz page
+ * Startup animation, once per browser session: the name decrypts on black, a hairline draws
+ * across, and the screen splits open. Tap anywhere to skip. Skipped entirely on the quiz page
  * and under prefers-reduced-motion. The overlay is in the server HTML, so the page never flashes
  * underneath it first.
  */
@@ -50,7 +50,7 @@ export function IntroGate({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    const id = setTimeout(() => setPhase('done'), 2500);
+    const id = setTimeout(() => setPhase('done'), 2200);
     return () => clearTimeout(id);
   }, [phase]);
 
@@ -61,24 +61,27 @@ export function IntroGate({ children }: { children: ReactNode }) {
         {phase !== 'done' && (
           <motion.div
             key="intro"
-            className="bg-canvas fixed inset-0 z-[90] grid cursor-pointer place-items-center"
-            variants={{
-              exit: (instant: boolean) =>
-                instant
-                  ? { opacity: 0, transition: { duration: 0.15 } }
-                  : { y: '-100%', transition: { duration: 0.75, ease: [0.76, 0, 0.24, 1] } },
-            }}
-            exit="exit"
+            className="fixed inset-0 z-[90] cursor-pointer"
+            exit={{ opacity: skipped ? 0 : 1, transition: { duration: skipped ? 0.15 : 0.9 } }}
             onClick={() => setPhase('done')}
             aria-hidden
           >
+            {/* Two black halves that split apart to open the site. */}
+            {(['top', 'bottom'] as const).map((side) => (
+              <motion.div
+                key={side}
+                className={`bg-canvas absolute inset-x-0 h-1/2 ${side === 'top' ? 'top-0' : 'bottom-0'}`}
+                exit={
+                  skipped
+                    ? undefined
+                    : {
+                        y: side === 'top' ? '-100%' : '100%',
+                        transition: { duration: 0.85, ease: [0.76, 0, 0.24, 1] },
+                      }
+                }
+              />
+            ))}
             {phase === 'play' && <IntroArt />}
-            <motion.div
-              className="bg-accent absolute inset-x-0 bottom-0 h-2 origin-left"
-              initial={{ scaleX: 0 }}
-              animate={phase === 'play' ? { scaleX: 1 } : {}}
-              transition={{ duration: 2.3, ease: 'linear' }}
-            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -88,84 +91,39 @@ export function IntroGate({ children }: { children: ReactNode }) {
 
 function IntroArt() {
   return (
-    <div className="flex flex-col items-center">
-      <svg viewBox="0 0 64 72" className="h-32 w-auto overflow-visible sm:h-40" fill="none">
-        <defs>
-          <clipPath id="cc-intro-glass">
-            <path d="M13.2 30h37.6l-5.4 36a3 3 0 0 1-3 2.6H21.6a3 3 0 0 1-3-2.6L13.2 30Z" />
-          </clipPath>
-        </defs>
-        {[
-          { x: 22, delay: 1.05, drift: -3 },
-          { x: 32, delay: 1.25, drift: 4 },
-          { x: 42, delay: 1.45, drift: -2 },
-        ].map((w) => (
-          <motion.path
-            key={w.x}
-            d={`M${w.x} 22c-4-5 4-8 0-13s4-7 0-9`}
-            stroke="var(--cc-accent-strong)"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: [0, 1, 0.9], y: [8, -2, -6], x: [0, w.drift / 2, w.drift] }}
-            transition={{ duration: 1.1, delay: w.delay, ease }}
-          />
-        ))}
-        <motion.path
-          d="M10 28h44l-5.5 38a5 5 0 0 1-5 4.3H20.5a5 5 0 0 1-5-4.3L10 28Z"
-          fill="var(--cc-petal)"
-          stroke="var(--cc-ink)"
-          strokeWidth="2.4"
-          strokeLinejoin="round"
-          initial={{ opacity: 0, scale: 0.85, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.5, ease }}
-          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+    <motion.div
+      className="absolute inset-0 grid place-items-center px-4"
+      exit={{ opacity: 0, scale: 1.08, transition: { duration: 0.35 } }}
+    >
+      <div className="flex w-full max-w-5xl flex-col items-start">
+        <Scramble
+          text="CHAI CONNECT"
+          duration={1100}
+          className="font-display text-fg text-[clamp(2.6rem,11.5vw,9rem)] leading-[0.9] font-black tracking-[-0.05em]"
         />
-        <g clipPath="url(#cc-intro-glass)">
-          <motion.rect
-            x="8"
-            y="30"
-            width="48"
-            height="40"
-            fill="var(--cc-plum)"
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: 0.75, delay: 0.35, ease: [0.33, 1, 0.68, 1] }}
-            style={{ transformBox: 'fill-box', transformOrigin: 'bottom' }}
-          />
-        </g>
-        <motion.path
-          d="M8 28h48"
-          stroke="var(--cc-ink)"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
+        <motion.div
+          className="bg-accent mt-5 h-2 w-full origin-left"
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 1.5, delay: 0.25, ease: [0.65, 0, 0.35, 1] }}
         />
-      </svg>
-      <p className="font-display text-fg mt-6 flex overflow-hidden text-[clamp(2.2rem,10vw,3.6rem)] leading-none font-black tracking-[-0.04em]">
-        {'Chai Connect'.split('').map((ch, i) => (
+        <div className="text-accent mt-4 flex w-full justify-between font-mono text-[0.7rem] tracking-[0.3em] uppercase sm:text-xs">
           <motion.span
-            key={i}
-            className={ch === ' ' ? 'w-[0.3em]' : i > 4 ? 'text-accent-strong' : undefined}
-            initial={{ y: '110%' }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.6, delay: 1.0 + i * 0.035, ease }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
           >
-            {ch === ' ' ? '\u00a0' : ch}
+            ACM-W
           </motion.span>
-        ))}
-      </p>
-      <motion.p
-        className="text-fg-muted mt-4 text-sm font-medium tracking-[0.2em] uppercase"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 1.6 }}
-      >
-        ACM-W · 25 November
-      </motion.p>
-    </div>
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.1 }}
+          >
+            27.11.2026
+          </motion.span>
+        </div>
+      </div>
+    </motion.div>
   );
 }

@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { LIMITS } from '@chai/core';
 import { Button, ButtonLink, ChaiCup, Field, Input, Switch, Textarea, cn } from '@chai/ui';
 import { readIndexedMirror, readMirror, writeMirror } from '@/lib/device-mirror';
+import { Celebrate } from '@/components/celebrate';
 import { askAction, checkAskedAction } from './actions';
 
 export function AskForm({ alreadyAsked, src }: { alreadyAsked: boolean; src: string | null }) {
@@ -151,6 +152,7 @@ export function AskForm({ alreadyAsked, src }: { alreadyAsked: boolean; src: str
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="border-line flex flex-col items-start gap-5 border-t pt-10"
         >
+          {state === 'sent' && <Celebrate word="Sent!" signal="done:ask" />}
           <ChaiCup className="h-20 w-auto" />
           <h2 className="font-display text-fg text-3xl font-bold">
             {state === 'sent' ? 'Your question is in.' : 'You’ve already asked from this phone.'}

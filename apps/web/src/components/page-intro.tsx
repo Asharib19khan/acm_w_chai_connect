@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ChaiCup } from '@chai/ui';
+import { Scramble } from './scramble';
 
 export function PageIntro({ title, children }: { title: string; children?: ReactNode }) {
   return (
@@ -21,8 +22,8 @@ export function PageIntro({ title, children }: { title: string; children?: React
         </svg>
         Home
       </Link>
-      <h1 className="font-display text-fg text-[clamp(2.4rem,9vw,5rem)] leading-[0.92] font-black tracking-[-0.04em] text-balance">
-        {title}
+      <h1 className="font-display text-fg border-accent border-b-4 pb-6 text-[clamp(2.4rem,10vw,5.6rem)] leading-[0.9] font-black tracking-[-0.05em] text-balance uppercase">
+        <Scramble text={title} duration={700} />
       </h1>
       {children && (
         <div className="text-fg-muted mt-5 max-w-xl text-lg leading-relaxed">{children}</div>

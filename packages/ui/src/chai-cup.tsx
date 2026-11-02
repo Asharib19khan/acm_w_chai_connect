@@ -16,7 +16,7 @@ export function ChaiCup({ className, steam = true }: { className?: string; steam
   const uid = useId().replace(/:/g, '');
   const id = (name: string) => `cc-cup-${name}-${uid}`;
   return (
-    <svg viewBox="0 0 64 72" className={cn('overflow-visible', className)} aria-hidden fill="none">
+    <svg viewBox="0 0 64 72" className={cn('cc-cup overflow-visible', className)} aria-hidden fill="none">
       <defs>
         <linearGradient
           id={id('steam')}

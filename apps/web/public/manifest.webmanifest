@@ -3,7 +3,7 @@
   "short_name": "Chai Connect",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fff0f8",
-  "theme_color": "#fff0f8",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
 }

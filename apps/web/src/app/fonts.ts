@@ -1,9 +1,9 @@
-import { DM_Sans, JetBrains_Mono, Unbounded } from 'next/font/google';
+import { Bricolage_Grotesque, DM_Sans, JetBrains_Mono, Unbounded } from 'next/font/google';
 
 // Self-hosted at build time by next/font (blueprint section 2).
+// Variable font (one file, every weight from 200 to 900): headings "breathe" with scroll speed.
 export const display = Unbounded({
   subsets: ['latin'],
-  weight: ['500', '600', '700', '800', '900'],
   variable: '--font-unbounded',
   display: 'swap',
 });
@@ -20,4 +20,11 @@ export const mono = JetBrains_Mono({
   display: 'swap',
 });
 
-export const fontVariables = `${display.variable} ${body.variable} ${mono.variable}`;
+// The home hero title only: a characterful grotesque with a wide weight range.
+export const hero = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-hero',
+  display: 'swap',
+});
+
+export const fontVariables = `${display.variable} ${body.variable} ${mono.variable} ${hero.variable}`;

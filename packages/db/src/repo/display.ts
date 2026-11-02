@@ -121,3 +121,49 @@ export async function displayData(): Promise<DisplayData> {
       .map((m) => ({ id: m.id, title: m.title, by: m.uploaderName })),
   };
 }
+
+export interface PulseJoin {
+  /** Opaque, only used to tell joins apart on the phone. */
+  key: string;
+  department: string;
+  game: string;
+  at: string;
+}
+
+export interface StudentPulse {
+  serverNow: number;
+  quizLive: boolean;
+  questions: { id: string; body: string; name: string | null }[];
+  joins: PulseJoin[];
+}
+
+/**
+ * What the student site shows live: the questions already approved for the big screen, and recent
+ * sign-ups as department + game only. No names, no roll numbers and never a total.
+ */
+export async function studentPulse(): Promise<StudentPulse> {
+  const control = await getControl();
+  const db = await read();
+  const since = Date.now() - 15 * 60_000;
+  const questions = db.questions
+    .filter((q) => q.status === 'approved' && !q.answered)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 8)
+    .map((q) => ({ id: q.id, body: q.body, name: q.showName ? q.displayName : null }));
+  const joins = db.registrations
+    .filter((r) => Date.parse(r.createdAt) >= since && r.status !== 'withdrawn')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 6)
+    .map((r) => ({
+      key: r.id.slice(-6),
+      department: r.department,
+      game: db.games.find((g) => g.id === r.gameId)?.name ?? 'a game',
+      at: r.createdAt,
+    }));
+  return {
+    serverNow: Date.now(),
+    quizLive: control.phase !== 'locked' && control.phase !== 'ended',
+    questions,
+    joins,
+  };
+}

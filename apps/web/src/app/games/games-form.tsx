@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import type { GameCategory } from '@chai/core';
 import { Button, ButtonLink, Field, Input, cn } from '@chai/ui';
 import { IdentityFields } from '@/components/identity-fields';
+import { Celebrate } from '@/components/celebrate';
 import { lookupAction, registerAction } from './actions';
 
 export interface GameCard {
@@ -124,7 +125,9 @@ function GameGroup({
   return (
     <fieldset>
       <legend className="flex w-full items-baseline justify-between gap-4 pb-4">
-        <span className="font-display text-fg text-2xl font-bold">{title}</span>
+        <span className="font-display text-fg text-[clamp(1.8rem,7vw,3rem)] leading-none font-black tracking-[-0.04em] uppercase">
+          {title}
+        </span>
         <span className="text-fg-muted text-sm">{hint}</span>
       </legend>
       <div role="radiogroup" aria-label={title} className="border-line border-t">
@@ -140,31 +143,41 @@ function GameGroup({
               disabled={closed}
               onClick={() => onChange(selected ? null : game.id)}
               className={cn(
-                'group border-line relative flex w-full items-start gap-4 border-b py-5 text-left transition-colors disabled:opacity-50',
+                'group border-line relative flex w-full items-start gap-4 border-b px-3 py-6 text-left transition-[transform,colors] duration-300 disabled:opacity-50',
+                selected && '-rotate-1',
                 !closed && 'hover:bg-wash',
               )}
             >
               {selected && (
                 <motion.span
                   layoutId={`pick-${games[0]?.category}`}
-                  className="bg-accent-soft absolute inset-0 -z-0"
+                  className="bg-accent absolute inset-0 -z-0 shadow-[5px_5px_0_0_#000]"
                   transition={{ type: 'spring', stiffness: 420, damping: 36 }}
                 />
               )}
               <span
                 className={cn(
-                  'relative mt-1 grid size-6 shrink-0 place-items-center rounded-full ring-2 transition-colors ring-inset',
-                  selected
-                    ? 'bg-accent ring-accent-strong'
-                    : 'ring-edge group-hover:ring-fg-subtle',
+                  'relative mt-1 grid size-7 shrink-0 place-items-center ring-[3px] ring-[#000] transition-colors ring-inset',
+                  selected ? 'bg-[#000]' : 'group-hover:bg-accent-soft bg-white',
                 )}
                 aria-hidden
               >
-                {selected && <span className="bg-canvas size-2.5 rounded-full" />}
+                {selected && (
+                  <svg viewBox="0 0 24 24" className="size-5 text-[#ff4fd8]">
+                    <path
+                      d="M4 12.5 9.5 18 20 6"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                      fill="none"
+                    />
+                  </svg>
+                )}
               </span>
               <span className="relative flex min-w-0 flex-1 flex-col gap-1 pr-2">
                 <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="font-display text-fg text-xl font-semibold">{game.name}</span>
+                  <span className="font-display text-fg text-[clamp(1.5rem,6vw,2.2rem)] leading-none font-black tracking-[-0.04em] uppercase">
+                    {game.name}
+                  </span>
                   <span className="text-fg-muted text-xs font-medium">
                     {game.teamSize > 1 ? `Teams of ${game.teamSize}` : 'Solo'}
                     {' · '}
@@ -195,6 +208,7 @@ function Confirmation({ done, rollNo }: { done: Done; rollNo: string }) {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col gap-8"
     >
+      <Celebrate word="You're in!" signal="done:games" />
       <div className="bg-accent text-fg overflow-hidden rounded-[28px]">
         <div className="flex flex-col gap-1 p-6 sm:p-8">
           <span className="text-sm font-semibold">You’re in</span>

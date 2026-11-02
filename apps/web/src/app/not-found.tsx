@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col items-start gap-6 px-4 pt-16 sm:px-8">
       <ChaiCup className="h-20 w-auto" steam={false} />
-      <h1 className="font-display text-fg text-[clamp(2.6rem,10vw,5rem)] leading-[0.92] font-black tracking-tight">
+      <h1 className="font-display text-fg text-[clamp(2.6rem,10vw,5rem)] leading-[0.9] font-black tracking-[-0.05em] uppercase">
         This cup is empty.
       </h1>
       <p className="text-fg-muted text-lg">
