@@ -30,7 +30,8 @@ function connect(): Sql {
   const local = url.includes('127.0.0.1') || url.includes('localhost');
   return postgres(url, {
     prepare: false,
-    max: local ? 10 : 3,
+    fetch_types: false,
+    max: local ? 10 : 5,
     idle_timeout: 20,
     connect_timeout: 15,
     ssl: local ? false : 'require',
@@ -52,6 +53,7 @@ function connect(): Sql {
 }
 
 export function sql(): Sql {
+  // The driver carries a pnpm patch (patches/postgres@3.4.9.patch) for Supabase's pooler.
   g.__chaiSql ??= connect();
   return g.__chaiSql;
 }

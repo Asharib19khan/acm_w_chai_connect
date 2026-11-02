@@ -4,10 +4,12 @@ packages:
   - workers/*
   - tools/*
 
+ignoredBuiltDependencies:
+  - unrs-resolver
+
 onlyBuiltDependencies:
   - supabase
   - sharp
   - '@tailwindcss/oxide'
-
-ignoredBuiltDependencies:
-  - unrs-resolver
+patchedDependencies:
+  postgres@3.4.9: patches/postgres@3.4.9.patch
