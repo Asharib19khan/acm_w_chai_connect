@@ -68,9 +68,9 @@ k6 run load/quiz.js
 
 1. Secrets live only in environment variables. Never prefix a secret with `NEXT_PUBLIC_`.
    Modules that touch secrets import `server-only`. Never log secrets, TOTP codes or CV contents.
-2. The Supabase service-role key is used only inside `packages/db`. Browsers never query tables;
-   they may only subscribe to Realtime on `display_events` and upload photos through the relay with a
-   server-issued ticket. Students never see a Drive URL, folder or session link.
+2. The database connection string (`DATABASE_URL`) is used only inside `packages/db`. Browsers never
+   query tables (RLS on, no policies, no grants to `anon`/`authenticated`); screens poll our own
+   APIs. Every new migration keeps that: enable RLS and revoke the Data API roles. Students never see a Drive URL, folder or session link.
 3. Every new table: RLS enabled, no grants to `anon`/`authenticated` (except `select` on
    `display_events`), plus a pgTAP test proving it.
 4. Every server action and route handler, in this order: Zod-parse input → Turnstile (public forms)

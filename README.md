@@ -27,9 +27,15 @@ Environment variables are optional locally. Copy `.env.example` to `apps/web/.en
 `apps/control/.env.local` as each service gets set up. Never commit those files. On Vercel, production
 and preview builds fail if any variable is missing or a secret carries a `NEXT_PUBLIC_` prefix.
 
-## Local data (until Supabase is connected)
+## Data
 
-Both apps share a local store in `.data/` (never committed). Typical first run:
+Production data lives in Supabase Postgres (free tier, Mumbai). The schema is in
+`supabase/migrations`; apply new files with `pnpm exec supabase db push`. Every new table must
+enable RLS and revoke `anon`/`authenticated`, as the first migration does: only our servers query
+tables, through `packages/db`.
+
+Locally, `pnpm dev` also starts a real PostgreSQL 17 (embedded-postgres, no Docker) on port 54329,
+with its data in `.data/pg` (never committed). Tests start their own throwaway copy. Typical first run:
 
 ```sh
 pnpm bootstrap:superadmin   # creates the superadmin; scan the QR with Microsoft Authenticator
@@ -37,18 +43,21 @@ pnpm seed:demo              # optional: synthetic questions, CVs, registrations 
 pnpm dev
 ```
 
+Scripts that touch data need the local database running (`pnpm db:local` in its own terminal, or
+`pnpm dev`).
+
 - Student site: http://localhost:3000
 - Auditorium display: http://localhost:3001 (press Ctrl+Shift+1+9 to sign in)
 - Admin portal: http://localhost:3001/admin (add web team members on the Team page)
 - Share Moments: http://localhost:3002 · Games desk: http://localhost:3003
-- `pnpm data:reset` wipes everything (run `bootstrap:superadmin` again afterwards).
+- `pnpm data:reset` wipes the local database (run `bootstrap:superadmin` again afterwards).
 
 ## Checks
 
 ```sh
 pnpm lint           # ESLint, including the security rules from CLAUDE.md
 pnpm typecheck
-pnpm test           # Vitest unit tests
+pnpm test           # Vitest, including the data rules against a real Postgres
 pnpm test:db        # pgTAP database tests (needs Docker: run `pnpm exec supabase start` first)
 pnpm e2e            # Playwright on iPhone, Pixel and 1920x1080 sizes (first run: pnpm exec playwright install chromium webkit)
 pnpm format         # Prettier
