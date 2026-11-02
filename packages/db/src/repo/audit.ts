@@ -1,18 +1,19 @@
 import 'server-only';
 import { newId } from '../crypto';
-import { now, read } from '../store';
-import type { AuditEntry, Db } from '../types';
+import { sql, type Tx } from '../sql';
+import { now, ready } from '../store';
+import type { AuditEntry } from '../types';
 
-/** Call inside a mutate() so the audit row lands in the same write as the change. */
-export function writeAudit(
-  db: Db,
+/** Call with the same transaction as the change, so the audit row lands in the same write. */
+export async function writeAudit(
+  t: Tx,
   actor: { id: string; name: string } | null,
   action: string,
   entity: string,
   entityId: string | null,
   detail: string | null = null,
-): void {
-  db.audit.unshift({
+): Promise<void> {
+  const row: AuditEntry = {
     id: newId('aud'),
     adminId: actor?.id ?? null,
     adminName: actor?.name ?? null,
@@ -21,15 +22,18 @@ export function writeAudit(
     entityId,
     detail,
     createdAt: now(),
-  });
-  if (db.audit.length > 5000) db.audit.length = 5000;
+  };
+  await t`insert into audit ${t(row as never)}`;
 }
 
 export async function listAudit(
   filter: { adminId?: string; limit?: number } = {},
 ): Promise<AuditEntry[]> {
-  const db = await read();
-  return db.audit
-    .filter((entry) => !filter.adminId || entry.adminId === filter.adminId)
-    .slice(0, filter.limit ?? 200);
+  await ready();
+  const s = sql();
+  return s<AuditEntry[]>`
+    select * from audit
+    where ${filter.adminId ? s`admin_id = ${filter.adminId}` : s`true`}
+    order by created_at desc
+    limit ${filter.limit ?? 200}`;
 }

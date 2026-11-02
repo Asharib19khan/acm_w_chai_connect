@@ -11,6 +11,7 @@ export default defineConfig({
   },
   test: {
     fileParallelism: false,
+    globalSetup: ['packages/db/test/global-setup.ts'],
     include: [
       'packages/**/src/**/*.test.ts',
       'apps/**/src/**/*.test.{ts,tsx}',

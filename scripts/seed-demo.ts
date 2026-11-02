@@ -14,6 +14,7 @@ import {
   actOnRegistration,
   register,
   review,
+  closeSql,
 } from '@chai/db';
 import { DEPARTMENT_CODES, type DepartmentCode } from '@chai/core';
 
@@ -202,8 +203,9 @@ await importQuestions(
 
 writeFileSync(
   join(process.cwd(), '.data', 'DEMO_DATA_README.txt'),
-  'Everything in dev-db.json was created by scripts/seed-demo.ts and is synthetic.\n',
+  'Everything in the local database was created by scripts/seed-demo.ts and is synthetic.\n',
 );
 console.log(
   `Seeded: ${questions.length} questions, ${cvPeople.length} CVs, 64 students, 1 quiz. All synthetic.`,
 );
+await closeSql();

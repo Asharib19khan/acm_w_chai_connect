@@ -1,28 +1,36 @@
 import 'server-only';
-import { mutate, read } from '../store';
+import { sql, tx } from '../sql';
+import { bump, DEFAULT_SETTINGS, ready, revision } from '../store';
 import type { Settings } from '../types';
 import { writeAudit } from './audit';
 
 export async function getSettings(): Promise<Settings> {
-  return (await read()).settings;
+  await ready();
+  const [row] = await sql()<{ data: Settings }[]>`select data from settings where id = 1`;
+  return { ...DEFAULT_SETTINGS, ...row?.data };
 }
 
 export async function updateSettings(
   patch: Partial<Settings>,
   actor: { id: string; name: string },
 ): Promise<Settings> {
-  return mutate((db) => {
-    db.settings = {
-      ...db.settings,
+  await ready();
+  return tx(async (t) => {
+    const [row] = await t<{ data: Settings }[]>`select data from settings where id = 1 for update`;
+    const current = { ...DEFAULT_SETTINGS, ...row?.data };
+    const next: Settings = {
+      ...current,
       ...patch,
-      switches: { ...db.settings.switches, ...(patch.switches ?? {}) },
+      switches: { ...current.switches, ...(patch.switches ?? {}) },
     };
-    writeAudit(db, actor, 'settings.update', 'settings', null, Object.keys(patch).join(', '));
-    return db.settings;
+    await t`update settings set data = ${t.json(next as never)} where id = 1`;
+    await writeAudit(t, actor, 'settings.update', 'settings', null, Object.keys(patch).join(', '));
+    await bump(t);
+    return next;
   });
 }
 
 /** Cheap change counter for screens that poll. */
 export async function getRevision(): Promise<number> {
-  return (await read()).revision;
+  return revision();
 }

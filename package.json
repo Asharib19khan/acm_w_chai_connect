@@ -22,7 +22,9 @@
     "seed:demo": "tsx --conditions=react-server scripts/seed-demo.ts",
     "data:reset": "tsx --conditions=react-server scripts/reset-data.ts",
     "drive:connect": "tsx scripts/drive-connect.ts",
-    "dev:code": "tsx --conditions=react-server scripts/dev-code.ts"
+    "dev:code": "tsx --conditions=react-server scripts/dev-code.ts",
+    "db:local": "pnpm --filter @chai/db db:local",
+    "db:import-local": "tsx --conditions=react-server scripts/import-local-data.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
@@ -31,6 +33,7 @@
     "@types/qrcode": "1.5.6",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.3",
+    "postgres": "3.4.9",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "0.8.1",
     "qrcode": "1.5.4",

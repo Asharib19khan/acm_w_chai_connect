@@ -4,10 +4,13 @@ import { checkCv, inspectPdfBytes } from '@chai/ai';
 import { LIMITS, type DepartmentCode } from '@chai/core';
 import { extractText, getDocumentProxy } from 'unpdf';
 import { newId, sha256 } from '../crypto';
-import { filePath, mutate, now, read, UserError } from '../store';
+import { driveConfigured, driveDownload, driveUpload } from '../drive';
+import { isUnique, sql, tx } from '../sql';
+import { bump, filePath, now, ready, UserError } from '../store';
 import type { Cv, CvSummary } from '../types';
 import { writeAudit } from './audit';
 import { newModeration } from './moderation';
+import { getSettings } from './settings';
 
 const SKILL_WORDS = [
   'Python',
@@ -61,7 +64,8 @@ function guessSummary(text: string): CvSummary | null {
 }
 
 export async function cvExists(rollNo: string): Promise<boolean> {
-  return (await read()).cvs.some((cv) => cv.rollNo === rollNo);
+  await ready();
+  return (await sql()`select 1 from cvs where roll_no = ${rollNo} limit 1`).length > 0;
 }
 
 export async function createCv(input: {
@@ -73,6 +77,7 @@ export async function createCv(input: {
   fileName: string;
   bytes: Uint8Array;
 }): Promise<Cv> {
+  await ready();
   if (input.bytes.byteLength > LIMITS.cvMaxBytes) {
     throw new UserError('That PDF is over 4 MB. Export a smaller copy and try again.', 'file');
   }
@@ -95,55 +100,82 @@ export async function createCv(input: {
     }
   }
 
+  if (!(await getSettings()).switches.cvs) throw new UserError('CV uploads are closed right now.');
+  const duplicateRoll = () =>
+    new UserError(
+      'A CV for this roll number is already in. To replace it, visit the registration desk.',
+      'rollNo',
+    );
+  if (await cvExists(input.rollNo)) throw duplicateRoll();
+
   const digest = sha256(Buffer.from(input.bytes));
-  return mutate((db) => {
-    if (!db.settings.switches.cvs) throw new UserError('CV uploads are closed right now.');
-    if (db.cvs.some((cv) => cv.rollNo === input.rollNo)) {
-      throw new UserError(
-        'A CV for this roll number is already in. To replace it, visit the registration desk.',
-        'rollNo',
-      );
-    }
-    const id = newId('cv');
-    // Dev stand-in for the Drive upload; the server checks happened above, before storage.
-    writeFileSync(filePath('cvs', `${id}.pdf`), input.bytes);
-    const cv: Cv = {
-      id,
-      rollNo: input.rollNo,
-      department: input.department,
-      interests: input.interests,
-      interestNote: input.interestNote,
-      consentShare: true,
-      consentDisplay: input.consentDisplay,
-      fileKey: `${id}.pdf`,
-      fileName: input.fileName.slice(0, 120),
-      sha256: digest,
-      sizeBytes: input.bytes.byteLength,
-      pageCount,
-      activeContent: inspection.activeContent.length > 0,
-      textLength: text.length,
-      summary: guessSummary(text),
-      createdAt: now(),
-      ...newModeration(checkCv(inspection, text.length)),
-    };
-    if (db.cvs.some((other) => other.sha256 === digest)) {
-      cv.flag = 'red';
-      cv.flagCategories.push('duplicate');
-      cv.flagReasons.push('Same file as another CV.');
-    }
-    db.cvs.push(cv);
-    return cv;
-  });
+  const id = newId('cv');
+  // The server checks above all ran before anything is stored.
+  let fileKey: string;
+  if (driveConfigured()) {
+    const fileId = await driveUpload({
+      name: `${input.rollNo} ${id}.pdf`,
+      mime: 'application/pdf',
+      bytes: input.bytes,
+      appProperties: { cv: id, roll: input.rollNo },
+    });
+    fileKey = `drive:${fileId}`;
+  } else {
+    fileKey = `${id}.pdf`;
+    writeFileSync(filePath('cvs', fileKey), input.bytes);
+  }
+  const cv: Cv = {
+    id,
+    rollNo: input.rollNo,
+    department: input.department,
+    interests: input.interests,
+    interestNote: input.interestNote,
+    consentShare: true,
+    consentDisplay: input.consentDisplay,
+    fileKey,
+    fileName: input.fileName.slice(0, 120),
+    sha256: digest,
+    sizeBytes: input.bytes.byteLength,
+    pageCount,
+    activeContent: inspection.activeContent.length > 0,
+    textLength: text.length,
+    summary: guessSummary(text),
+    createdAt: now(),
+    ...newModeration(checkCv(inspection, text.length)),
+  };
+  try {
+    await tx(async (t) => {
+      const same = await t`select 1 from cvs where sha256 = ${digest} limit 1`;
+      if (same.length) {
+        cv.flag = 'red';
+        cv.flagCategories.push('duplicate');
+        cv.flagReasons.push('Same file as another CV.');
+      }
+      await t`
+        insert into cvs ${t({ ...cv, summary: null } as never)}`;
+      if (cv.summary) await t`update cvs set summary = ${t.json(cv.summary as never)} where id = ${id}`;
+      await bump(t);
+    });
+  } catch (error) {
+    if (isUnique(error)) throw duplicateRoll();
+    throw error;
+  }
+  return cv;
 }
 
 export async function listCvs(): Promise<Cv[]> {
-  return [...(await read()).cvs].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  await ready();
+  return sql()<Cv[]>`select * from cvs order by created_at`;
 }
 
 export async function readCvFile(id: string): Promise<{ cv: Cv; bytes: Buffer } | null> {
-  const cv = (await read()).cvs.find((item) => item.id === id);
+  await ready();
+  const [cv] = await sql()<Cv[]>`select * from cvs where id = ${id}`;
   if (!cv) return null;
-  return { cv, bytes: readFileSync(filePath('cvs', cv.fileKey)) };
+  const bytes = cv.fileKey.startsWith('drive:')
+    ? await driveDownload(cv.fileKey.slice(6))
+    : readFileSync(filePath('cvs', cv.fileKey));
+  return { cv, bytes };
 }
 
 export async function updateCvSummary(
@@ -151,10 +183,12 @@ export async function updateCvSummary(
   summary: CvSummary,
   actor: { id: string; name: string },
 ): Promise<void> {
-  await mutate((db) => {
-    const cv = db.cvs.find((item) => item.id === id);
-    if (!cv) throw new UserError('That CV no longer exists.');
-    cv.summary = { headline: summary.headline.slice(0, 80), skills: summary.skills.slice(0, 5) };
-    writeAudit(db, actor, 'cvs.edit_summary', 'cvs', id, null);
+  await ready();
+  await tx(async (t) => {
+    const clean = { headline: summary.headline.slice(0, 80), skills: summary.skills.slice(0, 5) };
+    const done = await t`update cvs set summary = ${t.json(clean as never)} where id = ${id} returning id`;
+    if (done.length === 0) throw new UserError('That CV no longer exists.');
+    await writeAudit(t, actor, 'cvs.edit_summary', 'cvs', id, null);
+    await bump(t);
   });
 }

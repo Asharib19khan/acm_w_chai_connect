@@ -7,12 +7,18 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx local/server.ts",
+    "db:local": "tsx local/server.ts"
   },
   "dependencies": {
     "@chai/ai": "workspace:*",
     "@chai/core": "workspace:*",
+    "postgres": "3.4.9",
     "server-only": "0.0.1",
     "unpdf": "1.9.1"
+  },
+  "devDependencies": {
+    "embedded-postgres": "17.11.0-beta.19"
   }
 }

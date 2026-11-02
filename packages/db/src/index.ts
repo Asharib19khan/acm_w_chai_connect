@@ -1,8 +1,9 @@
-// Server-only data layer. Today it runs on the local dev store (.data/); when Supabase is connected,
-// the repo functions are re-implemented on Supabase and every caller stays the same.
+// Server-only data layer on Postgres (Supabase in production, embedded Postgres locally).
+// Callers never see SQL; every function keeps the same signature it had on the old JSON store.
 import 'server-only';
 
 export { UserError, resetStore } from './store';
+export { closeSql } from './sql';
 export { hmac, randomToken, serverKey } from './crypto';
 export * from './types';
 export * from './repo/admins';

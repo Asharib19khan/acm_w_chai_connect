@@ -1,5 +1,8 @@
 import 'server-only';
-import { read } from '../store';
+import { sql } from '../sql';
+import { ready, revision } from '../store';
+import type { Cv, Game, Moment, Question, Registration } from '../types';
+import { getSettings } from './settings';
 import type { QuizPhase } from '../types';
 import { leaderboard, type LeaderRow } from './games';
 import { getControl, quizBoard, type QuizBoardRow } from './quiz';
@@ -57,42 +60,48 @@ export interface DisplayData {
 
 /** Everything the auditorium screen shows. Only approved content, never names on CVs. */
 export async function displayData(): Promise<DisplayData> {
+  await ready();
   const control = await getControl();
-  const db = await read();
-  const board = await quizBoard(control.phase === 'ended' ? 20 : 10);
+  const s = sql();
+  const [rev, settings, board, gameRows, questions, cvs, moments] = await Promise.all([
+    revision(),
+    getSettings(),
+    quizBoard(control.phase === 'ended' ? 20 : 10),
+    s<(Game & { players: number })[]>`
+      select g.*, (select count(*)::int from registrations r
+                   where r.game_id = g.id and r.status in ('registered', 'checked_in')) as players
+      from games g order by g.sort`,
+    s<Question[]>`select * from questions where status = 'approved' order by reviewed_at desc nulls last`,
+    s<Cv[]>`select * from cvs where status = 'approved'`,
+    s<Moment[]>`
+      select id, title, uploader_name from moments
+      where status = 'approved' and cover_key is not null order by created_at desc limit 24`,
+  ]);
   const games = await Promise.all(
-    [...db.games]
-      .sort((a, b) => a.sort - b.sort)
-      .map(async (g) => ({
-        id: g.id,
-        slug: g.slug,
-        name: g.name,
-        category: g.category,
-        status: g.status,
-        players: db.registrations.filter(
-          (r) => r.gameId === g.id && (r.status === 'registered' || r.status === 'checked_in'),
-        ).length,
-        top: await leaderboard(g.id, 10),
-      })),
+    gameRows.map(async (g) => ({
+      id: g.id,
+      slug: g.slug,
+      name: g.name,
+      category: g.category,
+      status: g.status,
+      players: g.players,
+      top: await leaderboard(g.id, 10),
+    })),
   );
-  const approvedCvs = db.cvs.filter((cv) => cv.status === 'approved');
   return {
-    revision: db.revision,
-    marquee: db.settings.marquee,
-    announcement: db.settings.announcement,
-    projectorMode: db.settings.projectorMode,
-    questions: db.questions
-      .filter((q) => q.status === 'approved')
-      .sort((a, b) => (b.reviewedAt ?? '').localeCompare(a.reviewedAt ?? ''))
-      .map((q) => ({
-        id: q.id,
-        body: q.body,
-        name: q.showName ? q.displayName : null,
-        createdAt: q.createdAt,
-        answered: q.answered,
-        spotlight: Boolean(q.spotlightAt),
-      })),
-    cvs: approvedCvs
+    revision: rev,
+    marquee: settings.marquee,
+    announcement: settings.announcement,
+    projectorMode: settings.projectorMode,
+    questions: questions.map((q) => ({
+      id: q.id,
+      body: q.body,
+      name: q.showName ? q.displayName : null,
+      createdAt: q.createdAt,
+      answered: q.answered,
+      spotlight: Boolean(q.spotlightAt),
+    })),
+    cvs: cvs
       .filter((cv) => cv.consentDisplay)
       .map((cv) => ({
         id: cv.id,
@@ -102,7 +111,7 @@ export async function displayData(): Promise<DisplayData> {
         skills: cv.summary?.skills ?? [],
         openTo: cv.interests,
       })),
-    cvCount: approvedCvs.length,
+    cvCount: cvs.length,
     games,
     quiz: {
       phase: control.phase,
@@ -115,10 +124,7 @@ export async function displayData(): Promise<DisplayData> {
       joinedRolls: board.joinedRolls,
       rows: board.rows,
     },
-    moments: db.moments
-      .filter((m) => m.status === 'approved' && m.coverKey)
-      .slice(0, 24)
-      .map((m) => ({ id: m.id, title: m.title, by: m.uploaderName })),
+    moments: moments.map((m) => ({ id: m.id, title: m.title, by: m.uploaderName })),
   };
 }
 
@@ -142,28 +148,29 @@ export interface StudentPulse {
  * sign-ups as department + game only. No names, no roll numbers and never a total.
  */
 export async function studentPulse(): Promise<StudentPulse> {
+  await ready();
   const control = await getControl();
-  const db = await read();
-  const since = Date.now() - 15 * 60_000;
-  const questions = db.questions
-    .filter((q) => q.status === 'approved' && !q.answered)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 8)
-    .map((q) => ({ id: q.id, body: q.body, name: q.showName ? q.displayName : null }));
-  const joins = db.registrations
-    .filter((r) => Date.parse(r.createdAt) >= since && r.status !== 'withdrawn')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 6)
-    .map((r) => ({
-      key: r.id.slice(-6),
-      department: r.department,
-      game: db.games.find((g) => g.id === r.gameId)?.name ?? 'a game',
-      at: r.createdAt,
-    }));
+  const s = sql();
+  const since = new Date(Date.now() - 15 * 60_000).toISOString();
+  const [questions, joins] = await Promise.all([
+    s<Question[]>`
+      select id, body, show_name, display_name from questions
+      where status = 'approved' and not answered order by created_at desc limit 8`,
+    s<(Registration & { gameName: string | null })[]>`
+      select r.id, r.department, r.created_at, g.name as game_name
+      from registrations r left join games g on g.id = r.game_id
+      where r.created_at >= ${since} and r.status <> 'withdrawn'
+      order by r.created_at desc limit 6`,
+  ]);
   return {
     serverNow: Date.now(),
     quizLive: control.phase !== 'locked' && control.phase !== 'ended',
-    questions,
-    joins,
+    questions: questions.map((q) => ({ id: q.id, body: q.body, name: q.showName ? q.displayName : null })),
+    joins: joins.map((r) => ({
+      key: r.id.slice(-6),
+      department: r.department,
+      game: r.gameName ?? 'a game',
+      at: r.createdAt,
+    })),
   };
 }

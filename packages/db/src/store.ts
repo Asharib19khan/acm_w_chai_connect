@@ -1,22 +1,15 @@
 import 'server-only';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DEFAULT_COMPANIES, DEFAULT_MARQUEE, GAME_SEEDS } from '@chai/core';
 import { dbEnv } from './env';
-import type { Db, Game } from './types';
+import { sql, type Tx } from './sql';
+import type { Settings } from './types';
 
 /*
- * Local development store: one JSON file shared by both apps until Supabase is connected
- * (blueprint section 0). Every repository function goes through read() and mutate(), so swapping
- * this file for Supabase queries leaves the screens untouched.
+ * Shared helpers for the repositories. Data lives in Postgres (supabase/migrations); this file
+ * seeds the fixed rows (settings, quiz control, games), keeps the change counter screens poll,
+ * and holds the local-only folder used for dev keys and old dev files.
  */
 
 function findRepoRoot(start: string): string {
@@ -30,9 +23,8 @@ function findRepoRoot(start: string): string {
   return start;
 }
 
+/** Local-only folder (gitignored): dev keys and files written by older dev builds. */
 export const DATA_DIR = dbEnv.dataDir ?? join(findRepoRoot(process.cwd()), '.data');
-const DB_FILE = join(DATA_DIR, 'dev-db.json');
-const LOCK_DIR = join(DATA_DIR, 'dev-db.lock');
 
 export function filePath(...parts: string[]): string {
   const full = join(DATA_DIR, 'files', ...parts);
@@ -44,39 +36,22 @@ export function now(): string {
   return new Date().toISOString();
 }
 
-function emptyDb(): Db {
-  return {
-    version: 1,
-    settings: {
-      marquee: DEFAULT_MARQUEE,
-      announcement: null,
-      switches: { questions: true, cvs: true, registration: true, moments: true },
-      companies: DEFAULT_COMPANIES,
-      projectorMode: false,
-      moderation: true,
-      cvRetentionDays: 60,
-    },
-    questions: [],
-    cvs: [],
-    moments: [],
-    games: GAME_SEEDS.map(seedGame),
-    registrations: [],
-    scoreEvents: [],
-    gameStations: [],
-    gameRuns: [],
-    quizzes: [],
-    quizControl: { quizId: null, phase: 'locked', startsAt: null, endedAt: null, updatedBy: null },
-    quizSessions: [],
-    admins: [],
-    adminSessions: [],
-    recoveryCodes: [],
-    audit: [],
-    revision: 0,
-  };
-}
+export const DEFAULT_SETTINGS: Settings = {
+  marquee: DEFAULT_MARQUEE,
+  announcement: null,
+  switches: { questions: true, cvs: true, registration: true, moments: true },
+  companies: DEFAULT_COMPANIES,
+  projectorMode: false,
+  moderation: true,
+  cvRetentionDays: 60,
+};
 
-function seedGame(g: (typeof GAME_SEEDS)[number], i: number): Game {
-  return {
+async function seed(): Promise<void> {
+  const s = sql();
+  await s`insert into settings (id, data) values (1, ${s.json(DEFAULT_SETTINGS as never)}) on conflict do nothing`;
+  await s`insert into quiz_control (id) values (1) on conflict do nothing`;
+  // Games added to GAME_SEEDS later appear on the next start; existing rows are left alone.
+  const rows = GAME_SEEDS.map((g, i) => ({
     id: `game_${g.slug}`,
     slug: g.slug,
     name: g.name,
@@ -86,94 +61,41 @@ function seedGame(g: (typeof GAME_SEEDS)[number], i: number): Game {
     teamSize: g.teamSize,
     blurb: g.blurb,
     sort: i,
-  };
+  }));
+  if (rows.length) await s`insert into games ${s(rows)} on conflict (slug) do nothing`;
 }
 
-/** Brings an older local store up to date: new tables, and games added to GAME_SEEDS since. */
-function upgrade(db: Db): Db {
-  db.gameStations ??= [];
-  db.gameRuns ??= [];
-  GAME_SEEDS.forEach((g, i) => {
-    if (!db.games.some((x) => x.slug === g.slug)) db.games.push(seedGame(g, i));
+const g = globalThis as unknown as { __chaiReady?: Promise<void> };
+
+/** Seeds the fixed rows once per server process. Every repository call awaits this first. */
+export function ready(): Promise<void> {
+  g.__chaiReady ??= seed().catch((error) => {
+    g.__chaiReady = undefined;
+    throw error;
   });
-  return db;
+  return g.__chaiReady;
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** Bumps the change counter screens poll. Sequences never block, so hot paths stay parallel. */
+export async function bump(t: Tx): Promise<void> {
+  await t`select nextval('revision_seq')`;
 }
 
-async function withLock<T>(fn: () => T): Promise<T> {
-  mkdirSync(DATA_DIR, { recursive: true });
-  const deadline = Date.now() + 5000;
-  for (;;) {
-    try {
-      mkdirSync(LOCK_DIR);
-      break;
-    } catch {
-      try {
-        if (Date.now() - statSync(LOCK_DIR).mtimeMs > 5000)
-          rmSync(LOCK_DIR, { recursive: true, force: true });
-      } catch {
-        // lock vanished between checks
-      }
-      if (Date.now() > deadline) throw new Error('Data store is busy. Try again.');
-      await sleep(8);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    rmSync(LOCK_DIR, { recursive: true, force: true });
-  }
+export async function revision(): Promise<number> {
+  await ready();
+  const [row] = await sql()`select last_value, is_called from revision_seq`;
+  return row?.isCalled ? Number(row.lastValue) : 0;
 }
 
-function load(): Db {
-  if (!existsSync(DB_FILE)) return emptyDb();
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return upgrade(JSON.parse(readFileSync(DB_FILE, 'utf8')) as Db);
-    } catch (error) {
-      if (attempt > 5) throw error;
-    }
-  }
-}
-
-function save(db: Db) {
-  const tmp = `${DB_FILE}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(db));
-  for (let attempt = 0; ; attempt++) {
-    try {
-      renameSync(tmp, DB_FILE);
-      return;
-    } catch (error) {
-      if (attempt > 20) throw error;
-      // Windows can briefly refuse the rename while another process reads the file.
-      const until = Date.now() + 10;
-      while (Date.now() < until) {
-        /* spin */
-      }
-    }
-  }
-}
-
-export async function read(): Promise<Db> {
-  return load();
-}
-
-/** Runs fn against the latest data under a cross-process lock and saves the result. */
-export async function mutate<T>(fn: (db: Db) => T): Promise<T> {
-  return withLock(() => {
-    const db = load();
-    const result = fn(db);
-    db.revision += 1;
-    save(db);
-    return result;
-  });
-}
-
+/** Tests and `pnpm data:reset`: empties every table, then re-seeds. */
 export async function resetStore(): Promise<void> {
-  await withLock(() => save(emptyDb()));
+  const s = sql();
+  await s`truncate settings, quiz_control, admins, admin_sessions, recovery_codes, audit, questions,
+    cvs, moments, games, registrations, score_events, game_stations, game_runs, quizzes,
+    quiz_sessions restart identity cascade`;
+  await s`alter sequence revision_seq restart`;
+  g.__chaiReady = undefined;
+  await ready();
 }
 
 /** Expected failures carry a message that is safe to show to the user. */

@@ -3,7 +3,7 @@
  * Run once: pnpm bootstrap:superadmin   (refuses if a superadmin already exists)
  */
 import QRCode from 'qrcode';
-import { bootstrapSuperadmin } from '@chai/db';
+import { bootstrapSuperadmin, closeSql } from '@chai/db';
 
 const name = process.argv[2] ?? 'Ye';
 
@@ -16,3 +16,4 @@ for (const code of recoveryCodes) console.log('  ', code);
 console.log(
   '\nThen press Ctrl+Shift+1+9 on the control app and sign in with your email and the 6-digit code.\n',
 );
+await closeSql();

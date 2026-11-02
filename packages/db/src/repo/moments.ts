@@ -11,13 +11,23 @@ import {
   writeSync,
 } from 'node:fs';
 import { newId } from '../crypto';
-import { filePath, mutate, now, read, UserError } from '../store';
+import { sql, tx } from '../sql';
+import { bump, filePath, now, ready, UserError } from '../store';
+import { getSettings } from './settings';
 import type { Moment } from '../types';
 
 /*
  * Dev stand-in for the Drive resumable upload behind the Cloudflare relay (blueprint section 0, A3).
  * Bytes are written exactly as received; completion recomputes the MD5 and must match the phone's.
  */
+
+async function find(id: string, deviceHash?: string): Promise<Moment | undefined> {
+  await ready();
+  const s = sql();
+  const [m] = await s<Moment[]>`
+    select * from moments where id = ${id} ${deviceHash ? s`and device_hash = ${deviceHash}` : s``}`;
+  return m;
+}
 
 export async function initMoment(input: {
   batchId: string;
@@ -29,11 +39,13 @@ export async function initMoment(input: {
   md5: string;
   deviceHash: string;
 }): Promise<{ id: string; receivedBytes: number; alreadyDone: boolean }> {
-  return mutate((db) => {
-    if (!db.settings.switches.moments) throw new UserError('Uploads are closed right now.');
-    const existing = db.moments.find(
-      (m) => m.md5 === input.md5 && m.sizeBytes === input.size && m.deviceHash === input.deviceHash,
-    );
+  await ready();
+  if (!(await getSettings()).switches.moments) throw new UserError('Uploads are closed right now.');
+  return tx(async (t) => {
+    await t`select pg_advisory_xact_lock(hashtext(${`moment:${input.deviceHash}`}))`;
+    const [existing] = await t<Moment[]>`
+      select * from moments
+      where md5 = ${input.md5} and size_bytes = ${input.size} and device_hash = ${input.deviceHash}`;
     if (existing) {
       return {
         id: existing.id,
@@ -41,10 +53,11 @@ export async function initMoment(input: {
         alreadyDone: existing.uploadState === 'complete',
       };
     }
-    const recent = db.moments.filter(
-      (m) => m.deviceHash === input.deviceHash && Date.now() - Date.parse(m.createdAt) < 3_600_000,
-    );
-    if (recent.length >= 200)
+    const [recent] = await t<{ n: number }[]>`
+      select count(*)::int as n from moments
+      where device_hash = ${input.deviceHash}
+        and created_at > ${new Date(Date.now() - 3_600_000).toISOString()}`;
+    if (recent!.n >= 200)
       throw new UserError('That is a lot of photos. Take a short break and try again.');
     const id = newId('m');
     const ext = (input.fileName.match(/\.[a-z0-9]{2,5}$/i)?.[0] ?? '.jpg').toLowerCase();
@@ -72,7 +85,7 @@ export async function initMoment(input: {
       reviewedAt: null,
       removedReason: null,
     };
-    db.moments.push(moment);
+    await t`insert into moments ${t(moment as never)}`;
     return { id, receivedBytes: 0, alreadyDone: false };
   });
 }
@@ -83,7 +96,7 @@ export async function writeMomentChunk(
   offset: number,
   bytes: Uint8Array,
 ): Promise<number> {
-  const moment = (await read()).moments.find((m) => m.id === id && m.deviceHash === deviceHash);
+  const moment = await find(id, deviceHash);
   if (!moment) throw new UserError('Upload not found. Start again.');
   if (moment.uploadState === 'complete') return moment.sizeBytes;
   if (offset !== moment.receivedBytes) {
@@ -99,12 +112,9 @@ export async function writeMomentChunk(
   } finally {
     closeSync(fd);
   }
-  return mutate((db) => {
-    const m = db.moments.find((item) => item.id === id);
-    if (!m) throw new UserError('Upload not found.');
-    m.receivedBytes = offset + bytes.byteLength;
-    return m.receivedBytes;
-  });
+  const received = offset + bytes.byteLength;
+  await sql()`update moments set received_bytes = ${received} where id = ${id}`;
+  return received;
 }
 
 function md5OfFile(path: string): Promise<string> {
@@ -122,17 +132,14 @@ export async function completeMoment(
   deviceHash: string,
   cover: Uint8Array | null,
 ): Promise<{ ok: true } | { ok: false; reason: 'md5' | 'size' }> {
-  const moment = (await read()).moments.find((m) => m.id === id && m.deviceHash === deviceHash);
+  const moment = await find(id, deviceHash);
   if (!moment) throw new UserError('Upload not found.');
   const target = filePath('moments', moment.fileKey);
   if (!existsSync(target) || statSync(target).size !== moment.sizeBytes)
     return { ok: false, reason: 'size' };
   const md5 = await md5OfFile(target);
   if (md5 !== moment.md5) {
-    await mutate((db) => {
-      const m = db.moments.find((item) => item.id === id);
-      if (m) m.receivedBytes = 0;
-    });
+    await sql()`update moments set received_bytes = 0 where id = ${id}`;
     return { ok: false, reason: 'md5' };
   }
   let coverKey: string | null = null;
@@ -140,28 +147,26 @@ export async function completeMoment(
     coverKey = `${id}.webp`;
     writeFileSync(filePath('covers', coverKey), cover);
   }
-  await mutate((db) => {
-    const m = db.moments.find((item) => item.id === id);
-    if (!m) return;
-    m.uploadState = 'complete';
-    m.coverKey = coverKey;
-    m.status = 'scanned';
-    m.flag = coverKey ? 'green' : 'red';
-    m.flagSource = 'rules';
-    m.flagReasons = coverKey ? [] : ['No cover could be made; check the original in Drive.'];
-    m.flagCategories = coverKey ? [] : ['other'];
+  await tx(async (t) => {
+    await t`
+      update moments set upload_state = 'complete', cover_key = ${coverKey}, status = 'scanned',
+        flag = ${coverKey ? 'green' : 'red'}, flag_source = 'rules',
+        flag_reasons = ${coverKey ? [] : ['No cover could be made; check the original in Drive.']}::text[],
+        flag_categories = ${coverKey ? [] : ['other']}::text[]
+      where id = ${id}`;
+    await bump(t);
   });
   return { ok: true };
 }
 
 export async function listMoments(): Promise<Moment[]> {
-  return [...(await read()).moments]
-    .filter((m) => m.uploadState === 'complete')
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  await ready();
+  return sql()<Moment[]>`
+    select * from moments where upload_state = 'complete' order by created_at desc`;
 }
 
 export async function readCover(id: string): Promise<Buffer | null> {
-  const moment = (await read()).moments.find((m) => m.id === id);
+  const moment = await find(id);
   if (!moment?.coverKey) return null;
   return readFileSync(filePath('covers', moment.coverKey));
 }
@@ -169,7 +174,7 @@ export async function readCover(id: string): Promise<Buffer | null> {
 export async function readMomentOriginal(
   id: string,
 ): Promise<{ moment: Moment; bytes: Buffer } | null> {
-  const moment = (await read()).moments.find((m) => m.id === id);
+  const moment = await find(id);
   if (!moment) return null;
   return { moment, bytes: readFileSync(filePath('moments', moment.fileKey)) };
 }

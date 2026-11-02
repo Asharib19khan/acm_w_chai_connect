@@ -176,10 +176,8 @@ describe('quiz', () => {
     ).rejects.toThrow(/already joined/);
     await db.setPhase('start', actor);
     // Skip the 5 s countdown in the test.
-    const { mutate } = await import('./store');
-    await mutate((d) => {
-      d.quizControl.startsAt = new Date(Date.now() - 1).toISOString();
-    });
+    const { sql } = await import('./sql');
+    await sql()`update quiz_control set starts_at = ${new Date(Date.now() - 1).toISOString()}`;
     const next = await db.nextQuestion(token);
     expect(next.kind).toBe('question');
     if (next.kind !== 'question') return;

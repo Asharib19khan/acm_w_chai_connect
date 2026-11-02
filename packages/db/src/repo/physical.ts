@@ -1,9 +1,10 @@
 import 'server-only';
 import { timingSafeEqual } from 'node:crypto';
-import { newId } from '../crypto';
-import { mutate, now, read } from '../store';
 import type { DepartmentCode } from '@chai/core';
-import type { Registration } from '../types';
+import { newId } from '../crypto';
+import { sql, tx, type Tx } from '../sql';
+import { bump, now, ready } from '../store';
+import type { Registration, ScoreEvent } from '../types';
 import { writeAudit } from './audit';
 import { passHash } from './games';
 import type { StationAuth } from './stations';
@@ -15,7 +16,6 @@ import type { StationAuth } from './stations';
  * auditorium display and desk leaderboard show the real scores.
  */
 
-const CAN_PLAY: Registration['status'][] = ['registered', 'checked_in'];
 const actor = (auth: StationAuth) => ({ id: auth.station.id, name: `Station: ${auth.station.name}` });
 
 export interface RosterRow {
@@ -25,12 +25,20 @@ export interface RosterRow {
   round: number | null;
 }
 
+async function playable(t: Tx, gameId: string, rollNo: string, lock = false) {
+  const [reg] = await t<Registration[]>`
+    select * from registrations
+    where game_id = ${gameId} and roll_no = ${rollNo} and status in ('registered', 'checked_in')
+    limit 1 ${lock ? t`for update` : t``}`;
+  return reg;
+}
+
 export async function physicalRoster(gameId: string): Promise<RosterRow[]> {
-  const db = await read();
-  return db.registrations
-    .filter((r) => r.gameId === gameId && CAN_PLAY.includes(r.status))
-    .map((r) => ({ rollNo: r.rollNo, department: r.department, status: r.status, round: r.round }))
-    .sort((a, b) => a.rollNo.localeCompare(b.rollNo));
+  await ready();
+  return sql()<RosterRow[]>`
+    select roll_no, department, status, round from registrations
+    where game_id = ${gameId} and status in ('registered', 'checked_in')
+    order by roll_no`;
 }
 
 const same = (a: string, b: string) => {
@@ -46,8 +54,8 @@ export type PhysicalLogin =
 
 /** Roll number + the 6-digit pass code from the registration confirmation screen. */
 export async function physicalLogin(gameId: string, rollNo: string, passCode: string): Promise<PhysicalLogin> {
-  const db = await read();
-  const reg = db.registrations.find((r) => r.gameId === gameId && r.rollNo === rollNo && CAN_PLAY.includes(r.status));
+  await ready();
+  const reg = await playable(sql(), gameId, rollNo);
   if (!reg) return { kind: 'not_registered' };
   if (!/^\d{6}$/.test(passCode) || !same(reg.passCodeHash, passHash(passCode))) return { kind: 'wrong_code' };
   return { kind: 'ok', player: { rollNo: reg.rollNo, department: reg.department, status: reg.status, round: reg.round } };
@@ -55,13 +63,14 @@ export async function physicalLogin(gameId: string, rollNo: string, passCode: st
 
 /** The game saw the player at their gathering spot: mark them checked in on the desk too. */
 export async function physicalCheckIn(auth: StationAuth, rollNo: string): Promise<boolean> {
-  return mutate((db) => {
-    const reg = db.registrations.find((r) => r.gameId === auth.game.id && r.rollNo === rollNo && CAN_PLAY.includes(r.status));
+  await ready();
+  return tx(async (t) => {
+    const reg = await playable(t, auth.game.id, rollNo, true);
     if (!reg) return false;
     if (reg.status === 'registered') {
-      reg.status = 'checked_in';
-      reg.checkedInAt = now();
-      writeAudit(db, actor(auth), 'stations.check_in', 'registrations', reg.id, `${rollNo} checked in by GPS`);
+      await t`update registrations set status = 'checked_in', checked_in_at = ${now()} where id = ${reg.id}`;
+      await writeAudit(t, actor(auth), 'stations.check_in', 'registrations', reg.id, `${rollNo} checked in by GPS`);
+      await bump(t);
     }
     return true;
   });
@@ -72,15 +81,19 @@ export async function physicalCheckIn(auth: StationAuth, rollNo: string): Promis
  * the previous game total is voided and a new event inserted, so the history stays complete.
  */
 export async function physicalSetTotal(auth: StationAuth, rollNo: string, total: number, detail: string): Promise<'stored' | 'unchanged' | 'not_registered'> {
-  return mutate((db) => {
-    const reg = db.registrations.find((r) => r.gameId === auth.game.id && r.rollNo === rollNo && CAN_PLAY.includes(r.status));
+  await ready();
+  return tx(async (t) => {
+    const reg = await playable(t, auth.game.id, rollNo, true);
     if (!reg) return 'not_registered' as const;
-    const live = db.scoreEvents.filter((e) => e.registrationId === reg.id && e.source === 'system' && !e.voided);
+    const live = await t<ScoreEvent[]>`
+      select * from score_events where registration_id = ${reg.id} and source = 'system' and not voided`;
     const current = live.reduce((s, e) => s + e.points, 0);
     if (current === total && live.length <= 1) return 'unchanged' as const;
-    for (const e of live) { e.voided = true; e.voidReason = 'Replaced by a newer game total'; }
+    await t`
+      update score_events set voided = true, void_reason = 'Replaced by a newer game total'
+      where registration_id = ${reg.id} and source = 'system' and not voided`;
     if (total !== 0) {
-      db.scoreEvents.push({
+      const event: ScoreEvent = {
         id: newId('se'),
         gameId: auth.game.id,
         registrationId: reg.id,
@@ -91,9 +104,11 @@ export async function physicalSetTotal(auth: StationAuth, rollNo: string, total:
         voided: false,
         voidReason: null,
         createdAt: now(),
-      });
+      };
+      await t`insert into score_events ${t(event as never)}`;
     }
-    writeAudit(db, actor(auth), 'stations.total', 'score_events', reg.id, `${rollNo}: ${current} → ${total}`);
+    await writeAudit(t, actor(auth), 'stations.total', 'score_events', reg.id, `${rollNo}: ${current} → ${total}`);
+    await bump(t);
     return 'stored' as const;
   });
 }

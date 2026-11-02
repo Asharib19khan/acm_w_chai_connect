@@ -1,7 +1,8 @@
 import 'server-only';
 import { hmac, newId, randomToken, serverKey } from '../crypto';
-import { mutate, now, read, UserError } from '../store';
-import type { Db, Game, GameRun, GameStation, Registration } from '../types';
+import { sql, tx, type Tx } from '../sql';
+import { bump, now, ready, UserError } from '../store';
+import type { Game, GameRun, GameStation, Registration, ScoreEvent } from '../types';
 import { writeAudit } from './audit';
 
 /*
@@ -13,31 +14,26 @@ import { writeAudit } from './audit';
 
 type Actor = { id: string; name: string };
 
-/** Students who may play: registered or checked in. Waitlisted, withdrawn and DQ'd may not. */
-const CAN_PLAY: Registration['status'][] = ['registered', 'checked_in'];
-
 function keyHash(key: string): string {
   return hmac(serverKey('SESSION_HMAC_KEY'), `station:${key}`);
 }
 
 export type PublicStation = Omit<GameStation, 'keyHash'> & { runs: number; unmatchedRuns: number };
 
-function toPublic(db: Db, s: GameStation): PublicStation {
-  const { keyHash: _hash, ...rest } = s;
-  void _hash;
-  const runs = db.gameRuns.filter((r) => r.stationId === s.id);
-  return {
-    ...rest,
-    runs: runs.length,
-    unmatchedRuns: runs.filter((r) => !r.registrationId).length,
-  };
+async function publicStations(t: Tx, where = t`true`): Promise<PublicStation[]> {
+  return t<PublicStation[]>`
+    select s.id, s.game_id, s.name, s.created_by, s.created_at, s.last_seen_at, s.revoked_at,
+      count(r.run_id)::int as runs,
+      count(r.run_id) filter (where r.registration_id is null)::int as unmatched_runs
+    from game_stations s left join game_runs r on r.station_id = s.id
+    where ${where}
+    group by s.id
+    order by s.created_at desc`;
 }
 
 export async function listStations(): Promise<PublicStation[]> {
-  const db = await read();
-  return db.gameStations
-    .map((s) => toPublic(db, s))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  await ready();
+  return publicStations(sql());
 }
 
 /** Creates a station key. The key is returned once and never stored in readable form. */
@@ -46,8 +42,9 @@ export async function createStation(
   name: string,
   actor: Actor,
 ): Promise<{ station: PublicStation; key: string; gameSlug: string }> {
-  return mutate((db) => {
-    const game = db.games.find((g) => g.id === gameId);
+  await ready();
+  return tx(async (t) => {
+    const [game] = await t<Game[]>`select * from games where id = ${gameId}`;
     if (!game) throw new UserError('That game no longer exists.');
     const clean = name.trim().slice(0, 40);
     if (clean.length < 2) throw new UserError('Give the station a name, like "Laptop 1".');
@@ -62,18 +59,22 @@ export async function createStation(
       lastSeenAt: null,
       revokedAt: null,
     };
-    db.gameStations.push(station);
-    writeAudit(db, actor, 'stations.create', 'game_stations', station.id, `${game.name}: ${clean}`);
-    return { station: toPublic(db, station), key, gameSlug: game.slug };
+    await t`insert into game_stations ${t(station as never)}`;
+    await writeAudit(t, actor, 'stations.create', 'game_stations', station.id, `${game.name}: ${clean}`);
+    await bump(t);
+    const [pub] = await publicStations(t, t`s.id = ${station.id}`);
+    return { station: pub!, key, gameSlug: game.slug };
   });
 }
 
 export async function revokeStation(stationId: string, actor: Actor): Promise<void> {
-  await mutate((db) => {
-    const station = db.gameStations.find((s) => s.id === stationId);
+  await ready();
+  await tx(async (t) => {
+    const [station] = await t<GameStation[]>`select * from game_stations where id = ${stationId} for update`;
     if (!station) throw new UserError('That station no longer exists.');
-    if (!station.revokedAt) station.revokedAt = now();
-    writeAudit(db, actor, 'stations.revoke', 'game_stations', station.id, station.name);
+    if (!station.revokedAt) await t`update game_stations set revoked_at = ${now()} where id = ${stationId}`;
+    await writeAudit(t, actor, 'stations.revoke', 'game_stations', station.id, station.name);
+    await bump(t);
   });
 }
 
@@ -91,24 +92,25 @@ export async function stationFromKey(
   gameSlug: string,
 ): Promise<StationAuth | null> {
   if (!key || !/^ccst_[A-Za-z0-9_-]{20,64}$/.test(key)) return null;
-  const db = await read();
-  const hash = keyHash(key);
-  const station = db.gameStations.find((s) => s.keyHash === hash && !s.revokedAt);
-  const game = station && db.games.find((g) => g.id === station.gameId);
-  if (!station || !game || game.slug !== gameSlug) return null;
+  await ready();
+  const s = sql();
+  const [station] = await publicStations(s, s`s.key_hash = ${keyHash(key)} and s.revoked_at is null`);
+  if (!station) return null;
+  const [game] = await s<Game[]>`select * from games where id = ${station.gameId}`;
+  if (!game || game.slug !== gameSlug) return null;
   if (!station.lastSeenAt || Date.now() - Date.parse(station.lastSeenAt) > 60_000) {
-    await mutate((d) => {
-      const s = d.gameStations.find((x) => x.id === station.id);
-      if (s) s.lastSeenAt = now();
-    });
+    await s`update game_stations set last_seen_at = ${now()} where id = ${station.id}`;
   }
-  return { station: toPublic(db, station), game };
+  return { station, game };
 }
 
-function playable(db: Db, gameId: string, rollNo: string): Registration | undefined {
-  return db.registrations.find(
-    (r) => r.gameId === gameId && r.rollNo === rollNo && CAN_PLAY.includes(r.status),
-  );
+/** Students who may play: registered or checked in. Waitlisted, withdrawn and DQ'd may not. */
+async function playable(t: Tx, gameId: string, rollNo: string): Promise<Registration | undefined> {
+  const [reg] = await t<Registration[]>`
+    select * from registrations
+    where game_id = ${gameId} and roll_no = ${rollNo} and status in ('registered', 'checked_in')
+    limit 1 for update`;
+  return reg;
 }
 
 export type StationCheck = 'allowed' | 'already_played' | 'not_registered';
@@ -123,19 +125,14 @@ export async function stationCheckPlayer(
   rollNo: string,
   stationName = 'station',
 ): Promise<StationCheck> {
-  return mutate((db) => {
-    const reg = playable(db, gameId, rollNo);
+  await ready();
+  return tx(async (t) => {
+    const reg = await playable(t, gameId, rollNo);
     if (!reg) return 'not_registered' as const;
     if (reg.playClaimedAt) return 'already_played' as const;
-    reg.playClaimedAt = now();
-    writeAudit(
-      db,
-      null,
-      'stations.turn_used',
-      'registrations',
-      reg.id,
-      `${rollNo} on ${stationName}`,
-    );
+    await t`update registrations set play_claimed_at = ${now()} where id = ${reg.id}`;
+    await writeAudit(t, null, 'stations.turn_used', 'registrations', reg.id, `${rollNo} on ${stationName}`);
+    await bump(t);
     return 'allowed' as const;
   });
 }
@@ -149,51 +146,48 @@ export async function stationReplay(
   auth: StationAuth,
   rollNo: string,
 ): Promise<'allowed' | 'not_registered'> {
-  return mutate((db) => {
-    const reg = playable(db, auth.game.id, rollNo);
+  await ready();
+  return tx(async (t) => {
+    const reg = await playable(t, auth.game.id, rollNo);
     if (!reg) return 'not_registered' as const;
-    for (const e of db.scoreEvents)
-      if (e.registrationId === reg.id && e.source === 'system' && !e.voided) {
-        e.voided = true;
-        e.voidReason = 'Replaced: replay after a crash';
-      }
-    reg.playClaimedAt = now();
-    writeAudit(
-      db,
+    await t`
+      update score_events set voided = true, void_reason = 'Replaced: replay after a crash'
+      where registration_id = ${reg.id} and source = 'system' and not voided`;
+    await t`update registrations set play_claimed_at = ${now()} where id = ${reg.id}`;
+    await writeAudit(
+      t,
       { id: auth.station.id, name: `Station: ${auth.station.name}` },
       'stations.replay',
       'registrations',
       reg.id,
       `${rollNo}: previous record replaced`,
     );
+    await bump(t);
     return 'allowed' as const;
   });
 }
 
 /** Audits a wrong replay key from a station. The attempt itself is never stored. */
 export async function logWrongReplayKey(auth: StationAuth, rollNo: string): Promise<void> {
-  await mutate((db) => {
-    writeAudit(
-      db,
-      { id: auth.station.id, name: `Station: ${auth.station.name}` },
-      'stations.replay_denied',
-      'game_stations',
-      auth.station.id,
-      `${rollNo}: wrong secret key`,
-    );
-  });
+  await ready();
+  await writeAudit(
+    sql(),
+    { id: auth.station.id, name: `Station: ${auth.station.name}` },
+    'stations.replay_denied',
+    'game_stations',
+    auth.station.id,
+    `${rollNo}: wrong secret key`,
+  );
 }
 
 /** Roll numbers that may play, for the station's offline list (registered_players.txt). */
 export async function stationPlayerList(gameId: string): Promise<string[]> {
-  const db = await read();
-  return [
-    ...new Set(
-      db.registrations
-        .filter((r) => r.gameId === gameId && CAN_PLAY.includes(r.status))
-        .map((r) => r.rollNo),
-    ),
-  ].sort();
+  await ready();
+  const rows = await sql()<{ rollNo: string }[]>`
+    select distinct roll_no from registrations
+    where game_id = ${gameId} and status in ('registered', 'checked_in')
+    order by roll_no`;
+  return rows.map((r) => r.rollNo);
 }
 
 export interface StationRunInput {
@@ -219,9 +213,9 @@ export async function recordStationRun(
   auth: StationAuth,
   input: StationRunInput,
 ): Promise<StationRunResult> {
-  return mutate((db) => {
-    if (db.gameRuns.some((r) => r.runId === input.runId)) return { kind: 'duplicate' as const };
-    const reg = playable(db, auth.game.id, input.rollNo);
+  await ready();
+  return tx(async (t) => {
+    const reg = await playable(t, auth.game.id, input.rollNo);
     const run: GameRun = {
       ...input,
       gameId: auth.game.id,
@@ -229,16 +223,18 @@ export async function recordStationRun(
       registrationId: reg?.id ?? null,
       receivedAt: now(),
     };
-    db.gameRuns.push(run);
+    const inserted = await t`insert into game_runs ${t(run as never)} on conflict (run_id) do nothing returning run_id`;
+    if (inserted.length === 0) return { kind: 'duplicate' as const };
     let counted = false;
     if (reg) {
-      const alreadyScored = db.scoreEvents.some(
-        (e) => e.registrationId === reg.id && e.source === 'system' && !e.voided,
-      );
-      if (!alreadyScored) {
+      const scored = await t`
+        select 1 from score_events
+        where registration_id = ${reg.id} and source = 'system' and not voided limit 1`;
+      if (scored.length === 0) {
         counted = true;
-        reg.playClaimedAt ??= now();
-        db.scoreEvents.push({
+        if (!reg.playClaimedAt)
+          await t`update registrations set play_claimed_at = ${now()} where id = ${reg.id}`;
+        const event: ScoreEvent = {
           id: newId('se'),
           gameId: auth.game.id,
           registrationId: reg.id,
@@ -249,17 +245,19 @@ export async function recordStationRun(
           voided: false,
           voidReason: null,
           createdAt: now(),
-        });
+        };
+        await t`insert into score_events ${t(event as never)}`;
       }
     }
-    writeAudit(
-      db,
+    await writeAudit(
+      t,
       { id: auth.station.id, name: `Station: ${auth.station.name}` },
       reg ? 'stations.run' : 'stations.run_unmatched',
       'game_runs',
       input.runId,
       `${input.rollNo} ${input.points}${reg && !counted ? ' (extra round, not counted)' : ''}`,
     );
+    await bump(t);
     return { kind: 'stored' as const, matched: Boolean(reg), counted };
   });
 }

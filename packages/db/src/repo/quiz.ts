@@ -2,9 +2,9 @@ import 'server-only';
 import { randomInt } from 'node:crypto';
 import { quizPoints, rankQuiz, type DepartmentCode } from '@chai/core';
 import { hmac, newId, randomToken, serverKey } from '../crypto';
-import { mutate, now, read, UserError } from '../store';
+import { isUnique, sql, tx, type Tx } from '../sql';
+import { bump, now, ready, UserError } from '../store';
 import type {
-  Db,
   Quiz,
   QuizControl,
   QuizPhase,
@@ -19,6 +19,8 @@ type Actor = { id: string; name: string };
 /** Grace for network delay on answers (blueprint section 11). */
 const ANSWER_GRACE_MS = 1500;
 const COUNTDOWN_MS = 5000;
+/** The offline sweep runs at most this often, across every server instance. */
+const SWEEP_MS = Number(process.env.QUIZ_SWEEP_MS ?? 1500);
 
 const DEFAULT_SETTINGS: QuizSettings = {
   shuffleQuestions: true,
@@ -41,29 +43,62 @@ function tokenHash(token: string): string {
   return hmac(serverKey('SESSION_HMAC_KEY'), `quiz:${token}`);
 }
 
+/* ---------- reads ---------- */
+
+type ControlRow = QuizControl & { sweptAt: string | null };
+
+async function control(t: Tx, lock: '' | 'share' | 'update' = ''): Promise<ControlRow> {
+  const [c] = await t<ControlRow[]>`
+    select quiz_id, phase, starts_at, ended_at, updated_by, swept_at from quiz_control where id = 1
+    ${lock === 'update' ? t`for update` : lock === 'share' ? t`for share` : t``}`;
+  return c ?? { quizId: null, phase: 'locked', startsAt: null, endedAt: null, updatedBy: null, sweptAt: null };
+}
+
+async function quizById(t: Tx, id: string | null | undefined, lock = false): Promise<Quiz | null> {
+  if (!id) return null;
+  const [q] = await t<Quiz[]>`select * from quizzes where id = ${id} ${lock ? t`for update` : t``}`;
+  return q ?? null;
+}
+
+async function saveQuiz(t: Tx, q: Quiz): Promise<void> {
+  await t`
+    update quizzes set title = ${q.title}, settings = ${t.json(q.settings as never)},
+      questions = ${t.json(q.questions as never)}, ran_at = ${q.ranAt}
+    where id = ${q.id}`;
+}
+
+async function saveSession(t: Tx, s: QuizSession): Promise<void> {
+  await t`
+    update quiz_sessions set status = ${s.status}, dq_reason = ${s.dqReason},
+      current_index = ${s.currentIndex}, served_at = ${s.servedAt},
+      last_heartbeat_at = ${s.lastHeartbeatAt}, answers = ${t.json(s.answers as never)},
+      score = ${s.score}, correct_count = ${s.correctCount}, correct_ms = ${s.correctMs}
+    where id = ${s.id}`;
+}
+
 /* ---------- editor ---------- */
 
 export async function listQuizzes(): Promise<Quiz[]> {
-  return [...(await read()).quizzes].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  await ready();
+  return sql()<Quiz[]>`select * from quizzes order by created_at`;
 }
 
 export async function getQuiz(id: string): Promise<Quiz | null> {
-  return (await read()).quizzes.find((q) => q.id === id) ?? null;
+  await ready();
+  return quizById(sql(), id);
 }
 
-function assertEditable(db: Db, quizId: string) {
-  const c = db.quizControl;
-  if (
-    c.quizId === quizId &&
-    (c.phase === 'open' || c.phase === 'countdown' || c.phase === 'live')
-  ) {
+async function assertEditable(t: Tx, quizId: string) {
+  const c = await control(t, 'share');
+  if (c.quizId === quizId && (c.phase === 'open' || c.phase === 'countdown' || c.phase === 'live')) {
     throw new UserError('This quiz is open or live. Lock it before editing.');
   }
 }
 
 export async function createQuiz(title: string, actor: Actor, from?: string): Promise<Quiz> {
-  return mutate((db) => {
-    const source = from ? db.quizzes.find((q) => q.id === from) : undefined;
+  await ready();
+  return tx(async (t) => {
+    const source = from ? await quizById(t, from) : null;
     const quiz: Quiz = {
       id: newId('quiz'),
       title: title.trim().slice(0, 80) || 'Untitled quiz',
@@ -72,9 +107,34 @@ export async function createQuiz(title: string, actor: Actor, from?: string): Pr
       ranAt: null,
       createdAt: now(),
     };
-    db.quizzes.push(quiz);
-    writeAudit(db, actor, from ? 'quiz.duplicate' : 'quiz.create', 'quizzes', quiz.id, quiz.title);
+    await t`
+      insert into quizzes (id, title, settings, questions, ran_at, created_at)
+      values (${quiz.id}, ${quiz.title}, ${t.json(quiz.settings as never)},
+        ${t.json(quiz.questions as never)}, null, ${quiz.createdAt})`;
+    await writeAudit(t, actor, from ? 'quiz.duplicate' : 'quiz.create', 'quizzes', quiz.id, quiz.title);
+    await bump(t);
     return quiz;
+  });
+}
+
+/** Loads a quiz for editing (locked), runs edit, saves it and writes the audit row. */
+async function editQuiz<T>(
+  quizId: string,
+  actor: Actor,
+  action: string,
+  detail: string | null,
+  edit: (quiz: Quiz) => T,
+): Promise<T> {
+  await ready();
+  return tx(async (t) => {
+    const quiz = await quizById(t, quizId, true);
+    if (!quiz) throw new UserError('Quiz not found.');
+    await assertEditable(t, quizId);
+    const result = edit(quiz);
+    await saveQuiz(t, quiz);
+    await writeAudit(t, actor, action, 'quizzes', quizId, detail);
+    await bump(t);
+    return result;
   });
 }
 
@@ -83,25 +143,23 @@ export async function updateQuiz(
   patch: { title?: string; settings?: Partial<QuizSettings> },
   actor: Actor,
 ): Promise<void> {
-  await mutate((db) => {
-    const quiz = db.quizzes.find((q) => q.id === id);
-    if (!quiz) throw new UserError('Quiz not found.');
-    assertEditable(db, id);
+  await editQuiz(id, actor, 'quiz.update', Object.keys(patch).join(', '), (quiz) => {
     if (patch.title !== undefined) quiz.title = patch.title.trim().slice(0, 80) || quiz.title;
     if (patch.settings) quiz.settings = { ...quiz.settings, ...patch.settings };
-    writeAudit(db, actor, 'quiz.update', 'quizzes', id, Object.keys(patch).join(', '));
   });
 }
 
 export async function deleteQuiz(id: string, actor: Actor): Promise<void> {
-  await mutate((db) => {
-    const quiz = db.quizzes.find((q) => q.id === id);
+  await ready();
+  await tx(async (t) => {
+    const quiz = await quizById(t, id, true);
     if (!quiz) return;
     if (quiz.ranAt) throw new UserError('This quiz has already run, so it is kept for the record.');
-    assertEditable(db, id);
-    db.quizzes = db.quizzes.filter((q) => q.id !== id);
-    if (db.quizControl.quizId === id) db.quizControl.quizId = null;
-    writeAudit(db, actor, 'quiz.delete', 'quizzes', id, quiz.title);
+    await assertEditable(t, id);
+    await t`delete from quizzes where id = ${id}`;
+    await t`update quiz_control set quiz_id = null where id = 1 and quiz_id = ${id}`;
+    await writeAudit(t, actor, 'quiz.delete', 'quizzes', id, quiz.title);
+    await bump(t);
   });
 }
 
@@ -110,10 +168,7 @@ export async function saveQuestion(
   question: Omit<QuizQuestion, 'id'> & { id?: string },
   actor: Actor,
 ): Promise<void> {
-  await mutate((db) => {
-    const quiz = db.quizzes.find((q) => q.id === quizId);
-    if (!quiz) throw new UserError('Quiz not found.');
-    assertEditable(db, quizId);
+  await editQuiz(quizId, actor, 'quiz.question_save', question.body.slice(0, 60), (quiz) => {
     if (question.id) {
       const index = quiz.questions.findIndex((q) => q.id === question.id);
       if (index === -1) throw new UserError('Question not found.');
@@ -121,7 +176,6 @@ export async function saveQuestion(
     } else {
       quiz.questions.push({ ...question, id: newId('qq') });
     }
-    writeAudit(db, actor, 'quiz.question_save', 'quizzes', quizId, question.body.slice(0, 60));
   });
 }
 
@@ -130,12 +184,8 @@ export async function deleteQuestion(
   questionId: string,
   actor: Actor,
 ): Promise<void> {
-  await mutate((db) => {
-    const quiz = db.quizzes.find((q) => q.id === quizId);
-    if (!quiz) throw new UserError('Quiz not found.');
-    assertEditable(db, quizId);
+  await editQuiz(quizId, actor, 'quiz.question_delete', questionId, (quiz) => {
     quiz.questions = quiz.questions.filter((q) => q.id !== questionId);
-    writeAudit(db, actor, 'quiz.question_delete', 'quizzes', quizId, questionId);
   });
 }
 
@@ -144,16 +194,12 @@ export async function reorderQuestions(
   order: string[],
   actor: Actor,
 ): Promise<void> {
-  await mutate((db) => {
-    const quiz = db.quizzes.find((q) => q.id === quizId);
-    if (!quiz) throw new UserError('Quiz not found.');
-    assertEditable(db, quizId);
+  await editQuiz(quizId, actor, 'quiz.reorder', null, (quiz) => {
     const byId = new Map(quiz.questions.map((q) => [q.id, q]));
     const next = order.map((id) => byId.get(id)).filter((q): q is QuizQuestion => Boolean(q));
     if (next.length !== quiz.questions.length)
       throw new UserError('Reorder failed. Refresh and try again.');
     quiz.questions = next;
-    writeAudit(db, actor, 'quiz.reorder', 'quizzes', quizId, null);
   });
 }
 
@@ -162,12 +208,8 @@ export async function importQuestions(
   questions: Omit<QuizQuestion, 'id'>[],
   actor: Actor,
 ): Promise<number> {
-  return mutate((db) => {
-    const quiz = db.quizzes.find((q) => q.id === quizId);
-    if (!quiz) throw new UserError('Quiz not found.');
-    assertEditable(db, quizId);
+  return editQuiz(quizId, actor, 'quiz.import', `${questions.length} questions`, (quiz) => {
     for (const q of questions) quiz.questions.push({ ...q, id: newId('qq') });
-    writeAudit(db, actor, 'quiz.import', 'quizzes', quizId, `${questions.length} questions`);
     return questions.length;
   });
 }
@@ -178,52 +220,58 @@ function totalWindowMs(quiz: Quiz): number {
   return quiz.questions.reduce((sum, q) => sum + q.timeLimitS * 1000 + ANSWER_GRACE_MS, 0) + 10_000;
 }
 
-/** Applies time-based transitions (countdown → live → ended). Call inside mutate. */
-function advanceClock(db: Db): void {
-  const c = db.quizControl;
-  const quiz = db.quizzes.find((q) => q.id === c.quizId);
-  if (!quiz || !c.startsAt) return;
+/**
+ * Applies time-based transitions (countdown → live → ended) and disqualifies players who went
+ * offline. Runs in its own short statements, never inside a player's transaction, and the sweep is
+ * claimed by one server at a time, so thousands of answers never queue behind it.
+ */
+async function advanceClock(): Promise<void> {
+  const s = sql();
+  const c = await control(s);
+  if (!c.quizId || !c.startsAt || (c.phase !== 'countdown' && c.phase !== 'live')) return;
   const t = Date.now();
-  if (c.phase === 'countdown' && t >= Date.parse(c.startsAt)) c.phase = 'live';
-  if (c.phase === 'live') {
-    for (const s of db.quizSessions) {
-      if (s.quizId !== quiz.id || s.status !== 'active') continue;
-      if (
-        quiz.settings.offlineSeconds > 0 &&
-        t - Date.parse(s.lastHeartbeatAt) > quiz.settings.offlineSeconds * 1000
-      ) {
-        s.status = 'disqualified';
-        s.dqReason = 'Went offline';
-      }
-    }
-    const active = db.quizSessions.some((s) => s.quizId === quiz.id && s.status === 'active');
-    const joined = db.quizSessions.some((s) => s.quizId === quiz.id);
-    if ((joined && !active) || t > Date.parse(c.startsAt) + totalWindowMs(quiz)) {
-      c.phase = 'ended';
-      c.endedAt = now();
-    }
+  if (c.phase === 'countdown') {
+    if (t < Date.parse(c.startsAt)) return;
+    const moved = await s`update quiz_control set phase = 'live' where id = 1 and phase = 'countdown' returning id`;
+    if (moved.length) await bump(s);
   }
-}
-
-function needsClock(db: Db): boolean {
-  const c = db.quizControl;
-  return c.phase === 'countdown' || c.phase === 'live';
+  const claimed = await s`
+    update quiz_control set swept_at = ${now()}
+    where id = 1 and phase = 'live'
+      and (swept_at is null or swept_at <= ${new Date(t - SWEEP_MS).toISOString()})
+    returning id`;
+  if (claimed.length === 0) return;
+  const quiz = await quizById(s, c.quizId);
+  if (!quiz) return;
+  if (quiz.settings.offlineSeconds > 0) {
+    const cutoff = new Date(t - quiz.settings.offlineSeconds * 1000).toISOString();
+    const dq = await s`
+      update quiz_sessions set status = 'disqualified', dq_reason = 'Went offline'
+      where quiz_id = ${quiz.id} and status = 'active' and last_heartbeat_at < ${cutoff}
+      returning id`;
+    if (dq.length) await bump(s);
+  }
+  const [n] = await s<{ joined: number; active: number }[]>`
+    select count(*)::int as joined, count(*) filter (where status = 'active')::int as active
+    from quiz_sessions where quiz_id = ${quiz.id}`;
+  if ((n!.joined > 0 && n!.active === 0) || t > Date.parse(c.startsAt) + totalWindowMs(quiz)) {
+    const ended = await s`
+      update quiz_control set phase = 'ended', ended_at = ${now()}
+      where id = 1 and phase = 'live' returning id`;
+    if (ended.length) await bump(s);
+  }
 }
 
 export async function getControl(): Promise<
   QuizControl & { quizTitle: string | null; questionCount: number }
 > {
-  let db = await read();
-  if (needsClock(db)) {
-    await mutate((d) => advanceClock(d));
-    db = await read();
-  }
-  const quiz = db.quizzes.find((q) => q.id === db.quizControl.quizId);
-  return {
-    ...db.quizControl,
-    quizTitle: quiz?.title ?? null,
-    questionCount: quiz?.questions.length ?? 0,
-  };
+  await ready();
+  await advanceClock();
+  const s = sql();
+  const { sweptAt: _swept, ...c } = await control(s);
+  void _swept;
+  const quiz = await quizById(s, c.quizId);
+  return { ...c, quizTitle: quiz?.title ?? null, questionCount: quiz?.questions.length ?? 0 };
 }
 
 export async function setPhase(
@@ -231,34 +279,46 @@ export async function setPhase(
   actor: Actor,
   quizId?: string,
 ): Promise<QuizPhase> {
-  return mutate((db) => {
-    advanceClock(db);
-    const c = db.quizControl;
+  await ready();
+  await advanceClock();
+  return tx(async (t) => {
+    const c = await control(t, 'update');
+    let phase = c.phase;
+    let current = c.quizId;
     // Guarded transitions: a second admin pressing Start sees an error instead of a double start.
     if (action === 'unlock') {
       if (c.phase !== 'locked') throw new UserError('A quiz is already unlocked.');
-      const quiz = db.quizzes.find((q) => q.id === quizId);
+      const quiz = await quizById(t, quizId);
       if (!quiz) throw new UserError('Pick a quiz to unlock.');
       if (quiz.questions.length === 0) throw new UserError('This quiz has no questions yet.');
-      db.quizSessions = db.quizSessions.filter((s) => s.quizId !== quiz.id);
-      Object.assign(c, { quizId: quiz.id, phase: 'open', startsAt: null, endedAt: null });
+      await t`delete from quiz_sessions where quiz_id = ${quiz.id}`;
+      phase = 'open';
+      current = quiz.id;
+      await t`
+        update quiz_control set quiz_id = ${quiz.id}, phase = 'open', starts_at = null,
+          ended_at = null, swept_at = null
+        where id = 1`;
     } else if (action === 'start') {
       if (c.phase !== 'open') throw new UserError('Unlock the quiz before starting it.');
-      c.phase = 'countdown';
-      c.startsAt = new Date(Date.now() + COUNTDOWN_MS).toISOString();
-      const quiz = db.quizzes.find((q) => q.id === c.quizId);
-      if (quiz) quiz.ranAt = now();
+      phase = 'countdown';
+      await t`
+        update quiz_control set phase = 'countdown',
+          starts_at = ${new Date(Date.now() + COUNTDOWN_MS).toISOString()}
+        where id = 1`;
+      await t`update quizzes set ran_at = ${now()} where id = ${c.quizId}`;
     } else if (action === 'end') {
       if (c.phase !== 'live' && c.phase !== 'countdown')
         throw new UserError('The quiz is not running.');
-      c.phase = 'ended';
-      c.endedAt = now();
+      phase = 'ended';
+      await t`update quiz_control set phase = 'ended', ended_at = ${now()} where id = 1`;
     } else {
-      Object.assign(c, { phase: 'locked', startsAt: null, endedAt: null });
+      phase = 'locked';
+      await t`update quiz_control set phase = 'locked', starts_at = null, ended_at = null where id = 1`;
     }
-    c.updatedBy = actor.id;
-    writeAudit(db, actor, `quiz.${action}`, 'quiz_control', c.quizId, c.phase);
-    return c.phase;
+    await t`update quiz_control set updated_by = ${actor.id} where id = 1`;
+    await writeAudit(t, actor, `quiz.${action}`, 'quiz_control', current, phase);
+    await bump(t);
+    return phase;
   });
 }
 
@@ -269,61 +329,59 @@ export async function joinQuiz(input: {
   department: DepartmentCode;
   deviceHash: string;
 }): Promise<{ token: string }> {
-  return mutate((db) => {
-    advanceClock(db);
-    const c = db.quizControl;
-    const quiz = db.quizzes.find((q) => q.id === c.quizId);
-    if (!quiz || c.phase !== 'open') {
-      throw new UserError(
-        c.phase === 'locked' ? 'The quiz is not open yet.' : 'Joining has closed for this quiz.',
-      );
-    }
-    if (db.quizSessions.some((s) => s.quizId === quiz.id && s.rollNo === input.rollNo)) {
-      throw new UserError(
-        `${input.rollNo} has already joined. If that wasn't you, go to the registration desk.`,
-        'rollNo',
-      );
-    }
-    if (db.quizSessions.some((s) => s.quizId === quiz.id && s.deviceHash === input.deviceHash)) {
-      throw new UserError('This phone has already joined the quiz.');
-    }
-    const order = quiz.settings.shuffleQuestions ? shuffle(quiz.questions) : quiz.questions;
-    const token = randomToken();
-    db.quizSessions.push({
-      id: newId('qs'),
-      quizId: quiz.id,
-      rollNo: input.rollNo,
-      department: input.department,
-      deviceHash: input.deviceHash,
-      tokenHash: tokenHash(token),
-      status: 'active',
-      dqReason: null,
-      questionOrder: order.map((q) => q.id),
-      optionOrders: Object.fromEntries(
+  await ready();
+  await advanceClock();
+  const taken = (s: string) =>
+    new UserError(`${s} has already joined. If that wasn't you, go to the registration desk.`, 'rollNo');
+  try {
+    return await tx(async (t) => {
+      // FOR SHARE: joins run side by side, but an admin's Start waits for them to land.
+      const c = await control(t, 'share');
+      const quiz = await quizById(t, c.quizId);
+      if (!quiz || c.phase !== 'open') {
+        throw new UserError(
+          c.phase === 'locked' ? 'The quiz is not open yet.' : 'Joining has closed for this quiz.',
+        );
+      }
+      const dup = await t<{ rollNo: string; deviceHash: string }[]>`
+        select roll_no, device_hash from quiz_sessions
+        where quiz_id = ${quiz.id} and (roll_no = ${input.rollNo} or device_hash = ${input.deviceHash})`;
+      if (dup.some((d) => d.rollNo === input.rollNo)) throw taken(input.rollNo);
+      if (dup.length) throw new UserError('This phone has already joined the quiz.');
+      const order = quiz.settings.shuffleQuestions ? shuffle(quiz.questions) : quiz.questions;
+      const token = randomToken();
+      const optionOrders = Object.fromEntries(
         quiz.questions.map((q) => [
           q.id,
           (quiz.settings.shuffleOptions ? shuffle(q.options) : q.options).map((o) => o.id),
         ]),
-      ),
-      currentIndex: 0,
-      servedAt: null,
-      lastHeartbeatAt: now(),
-      answers: [],
-      score: 0,
-      correctCount: 0,
-      correctMs: 0,
-      joinedAt: now(),
+      );
+      await t`
+        insert into quiz_sessions (id, quiz_id, roll_no, department, device_hash, token_hash,
+          status, question_order, option_orders, current_index, last_heartbeat_at, answers,
+          score, correct_count, correct_ms, joined_at)
+        values (${newId('qs')}, ${quiz.id}, ${input.rollNo}, ${input.department},
+          ${input.deviceHash}, ${tokenHash(token)}, 'active', ${order.map((q) => q.id)},
+          ${t.json(optionOrders as never)}, 0, ${now()}, '[]', 0, 0, 0, ${now()})`;
+      await bump(t);
+      return { token };
     });
-    return { token };
-  });
+  } catch (error) {
+    if (isUnique(error, 'quiz_sessions_quiz_id_roll_no_key')) throw taken(input.rollNo);
+    if (isUnique(error, 'quiz_sessions_quiz_id_device_hash_key'))
+      throw new UserError('This phone has already joined the quiz.');
+    throw error;
+  }
 }
 
-function findSession(db: Db, token: string | undefined): QuizSession | null {
+async function findSession(t: Tx, token: string | undefined, lock = false): Promise<QuizSession | null> {
   if (!token) return null;
-  const hash = tokenHash(token);
-  return (
-    db.quizSessions.find((s) => s.tokenHash === hash && s.quizId === db.quizControl.quizId) ?? null
-  );
+  const [s] = await t<QuizSession[]>`
+    select * from quiz_sessions
+    where token_hash = ${tokenHash(token)}
+      and quiz_id = (select quiz_id from quiz_control where id = 1)
+    ${lock ? t`for update` : t``}`;
+  return s ?? null;
 }
 
 export interface PlayerQuestion {
@@ -352,35 +410,22 @@ export interface PlayerState {
   };
 }
 
-function rankSessions(db: Db, quizId: string) {
-  return rankQuiz(
-    db.quizSessions
-      .filter((s) => s.quizId === quizId && s.status !== 'disqualified')
-      .map((s) => ({
-        id: s.id,
-        score: s.score,
-        correctCount: s.correctCount,
-        correctMs: s.correctMs,
-        joinedAt: s.joinedAt,
-      })),
-  );
-}
-
 export async function playerState(token: string | undefined): Promise<PlayerState> {
-  let db = await read();
-  if (needsClock(db)) {
-    await mutate((d) => advanceClock(d));
-    db = await read();
-  }
-  const c = db.quizControl;
-  const quiz = db.quizzes.find((q) => q.id === c.quizId);
-  const session = findSession(db, token);
+  await ready();
+  await advanceClock();
+  const s = sql();
+  const c = await control(s);
+  const quiz = await quizById(s, c.quizId);
+  const session = await findSession(s, token);
+  const [n] = quiz
+    ? await s<{ n: number }[]>`select count(*)::int as n from quiz_sessions where quiz_id = ${quiz.id}`
+    : [{ n: 0 }];
   // Students never see scores or ranks (28 Oct amendment A7); those stay on the big screen.
   return {
     phase: c.phase,
     quizTitle: c.phase === 'locked' ? null : (quiz?.title ?? null),
     startsInMs: c.startsAt ? Date.parse(c.startsAt) - Date.now() : null,
-    joinedCount: quiz ? db.quizSessions.filter((s) => s.quizId === quiz.id).length : 0,
+    joinedCount: n!.n,
     serverNow: Date.now(),
     me: session
       ? {
@@ -394,7 +439,7 @@ export async function playerState(token: string | undefined): Promise<PlayerStat
   };
 }
 
-function serve(db: Db, quiz: Quiz, session: QuizSession): PlayerQuestion | null {
+function serve(quiz: Quiz, session: QuizSession): PlayerQuestion | null {
   const t = Date.now();
   // Expire the current question if its time ran out without an answer: a recorded miss.
   while (session.currentIndex < session.questionOrder.length) {
@@ -447,26 +492,37 @@ export type NextResult =
   | { kind: 'disqualified'; reason: string }
   | { kind: 'waiting' };
 
-function nextFor(db: Db, session: QuizSession): NextResult {
+function nextFor(phase: QuizPhase, quiz: Quiz | null, session: QuizSession): NextResult {
   if (session.status === 'disqualified')
     return { kind: 'disqualified', reason: session.dqReason ?? 'Disqualified' };
-  if (db.quizControl.phase !== 'live') {
-    return db.quizControl.phase === 'ended' ? { kind: 'done' } : { kind: 'waiting' };
-  }
-  const quiz = db.quizzes.find((q) => q.id === session.quizId);
+  if (phase !== 'live') return phase === 'ended' ? { kind: 'done' } : { kind: 'waiting' };
   if (!quiz) return { kind: 'waiting' };
-  const question = session.status === 'active' ? serve(db, quiz, session) : null;
+  const question = session.status === 'active' ? serve(quiz, session) : null;
   return question ? { kind: 'question', question } : { kind: 'done' };
 }
 
-export async function nextQuestion(token: string | undefined): Promise<NextResult> {
-  return mutate((db) => {
-    advanceClock(db);
-    const session = findSession(db, token);
+/** One player's turn: locks only their own session row, so players never wait on each other. */
+async function playerTurn<T>(
+  token: string | undefined,
+  fn: (ctx: { t: Tx; phase: QuizPhase; quiz: Quiz | null; session: QuizSession }) => T,
+): Promise<T> {
+  await ready();
+  await advanceClock();
+  return tx(async (t) => {
+    const session = await findSession(t, token, true);
     if (!session) throw new UserError('Join the quiz first.');
+    const c = await control(t);
+    const quiz = await quizById(t, session.quizId);
     session.lastHeartbeatAt = now();
-    return nextFor(db, session);
+    const result = fn({ t, phase: c.phase, quiz, session });
+    await saveSession(t, session);
+    await bump(t);
+    return result;
   });
+}
+
+export async function nextQuestion(token: string | undefined): Promise<NextResult> {
+  return playerTurn(token, ({ phase, quiz, session }) => nextFor(phase, quiz, session));
 }
 
 export async function answerQuestion(
@@ -474,19 +530,14 @@ export async function answerQuestion(
   questionId: string,
   optionId: string,
 ): Promise<NextResult & { locked: boolean }> {
-  return mutate((db) => {
-    advanceClock(db);
-    const session = findSession(db, token);
-    if (!session) throw new UserError('Join the quiz first.');
-    session.lastHeartbeatAt = now();
-    const quiz = db.quizzes.find((q) => q.id === session.quizId);
+  return playerTurn(token, ({ phase, quiz, session }) => {
     const current = session.questionOrder[session.currentIndex];
-    if (!quiz || db.quizControl.phase !== 'live' || session.status !== 'active') {
-      return { ...nextFor(db, session), locked: false };
+    if (!quiz || phase !== 'live' || session.status !== 'active') {
+      return { ...nextFor(phase, quiz, session), locked: false };
     }
     // Only the current, served, unanswered question can be answered: no skipping ahead, no re-answers.
     if (current !== questionId || !session.servedAt)
-      return { ...nextFor(db, session), locked: false };
+      return { ...nextFor(phase, quiz, session), locked: false };
     const question = quiz.questions.find((q) => q.id === questionId)!;
     if (!question.options.some((o) => o.id === optionId)) throw new UserError('Unknown option.');
     const elapsed = Date.now() - Date.parse(session.servedAt);
@@ -502,30 +553,33 @@ export async function answerQuestion(
     }
     session.currentIndex += 1;
     session.servedAt = null;
-    return { ...nextFor(db, session), locked: inTime };
+    return { ...nextFor(phase, quiz, session), locked: inTime };
   });
 }
 
 export async function reportViolation(token: string | undefined, reason: string): Promise<void> {
-  await mutate((db) => {
-    const session = findSession(db, token);
-    const quiz = db.quizzes.find((q) => q.id === session?.quizId);
+  await ready();
+  await tx(async (t) => {
+    const session = await findSession(t, token, true);
+    const quiz = await quizById(t, session?.quizId);
     if (!session || !quiz || session.status !== 'active') return;
-    if (db.quizControl.phase !== 'live' && db.quizControl.phase !== 'countdown') return;
+    const c = await control(t);
+    if (c.phase !== 'live' && c.phase !== 'countdown') return;
     if (!quiz.settings.dqOnLeave) return;
-    session.status = 'disqualified';
-    session.dqReason = reason.slice(0, 60);
+    await t`
+      update quiz_sessions set status = 'disqualified', dq_reason = ${reason.slice(0, 60)}
+      where id = ${session.id}`;
+    await bump(t);
   });
 }
 
 export async function heartbeat(token: string | undefined): Promise<void> {
-  const db = await read();
-  const session = findSession(db, token);
-  if (!session || session.status !== 'active') return;
-  await mutate((d) => {
-    const s = d.quizSessions.find((x) => x.id === session.id);
-    if (s) s.lastHeartbeatAt = now();
-  });
+  if (!token) return;
+  await ready();
+  await sql()`
+    update quiz_sessions set last_heartbeat_at = ${now()}
+    where token_hash = ${tokenHash(token)} and status = 'active'
+      and quiz_id = (select quiz_id from quiz_control where id = 1)`;
 }
 
 /* ---------- screens and admin ---------- */
@@ -540,6 +594,33 @@ export interface QuizBoardRow {
   rank: number;
 }
 
+type BoardSession = Pick<
+  QuizSession,
+  'id' | 'rollNo' | 'department' | 'status' | 'score' | 'correctCount' | 'correctMs' | 'joinedAt'
+> & { answered: number; totalMs: number };
+
+async function boardSessions(t: Tx, quizId: string): Promise<BoardSession[]> {
+  return t<BoardSession[]>`
+    select id, roll_no, department, status, score, correct_count, correct_ms, joined_at,
+      jsonb_array_length(answers)::int as answered,
+      coalesce((select sum((a->>'ms')::int) from jsonb_array_elements(answers) a), 0)::int as total_ms
+    from quiz_sessions where quiz_id = ${quizId}`;
+}
+
+function rank(sessions: BoardSession[]) {
+  return rankQuiz(
+    sessions
+      .filter((s) => s.status !== 'disqualified')
+      .map((s) => ({
+        id: s.id,
+        score: s.score,
+        correctCount: s.correctCount,
+        correctMs: s.correctMs,
+        joinedAt: s.joinedAt,
+      })),
+  );
+}
+
 export async function quizBoard(limit = 10): Promise<{
   rows: QuizBoardRow[];
   joined: number;
@@ -547,62 +628,69 @@ export async function quizBoard(limit = 10): Promise<{
   joinedRolls: string[];
   total: number;
 }> {
-  const db = await read();
-  const quizId = db.quizControl.quizId;
-  if (!quizId) return { rows: [], joined: 0, disqualified: 0, joinedRolls: [], total: 0 };
-  const sessions = db.quizSessions.filter((s) => s.quizId === quizId);
-  const byId = new Map(sessions.map((s) => [s.id, s]));
-  const rows = rankSessions(db, quizId)
+  await ready();
+  const s = sql();
+  const c = await control(s);
+  if (!c.quizId) return { rows: [], joined: 0, disqualified: 0, joinedRolls: [], total: 0 };
+  const sessions = await boardSessions(s, c.quizId);
+  const quiz = await quizById(s, c.quizId);
+  const byId = new Map(sessions.map((x) => [x.id, x]));
+  const rows = rank(sessions)
     .slice(0, limit)
     .map((r) => {
-      const s = byId.get(r.id)!;
+      const x = byId.get(r.id)!;
       return {
-        sessionId: s.id,
-        rollNo: s.rollNo,
-        department: s.department,
-        score: s.score,
-        correctCount: s.correctCount,
-        answered: s.answers.length,
+        sessionId: x.id,
+        rollNo: x.rollNo,
+        department: x.department,
+        score: x.score,
+        correctCount: x.correctCount,
+        answered: x.answered,
         rank: r.rank,
       };
     });
   return {
     rows,
     joined: sessions.length,
-    disqualified: sessions.filter((s) => s.status === 'disqualified').length,
+    disqualified: sessions.filter((x) => x.status === 'disqualified').length,
     joinedRolls: [...sessions]
       .sort((a, b) => b.joinedAt.localeCompare(a.joinedAt))
       .slice(0, 12)
-      .map((s) => s.rollNo),
-    total: db.quizzes.find((q) => q.id === quizId)?.questions.length ?? 0,
+      .map((x) => x.rollNo),
+    total: quiz?.questions.length ?? 0,
   };
 }
 
 export async function listDisqualified(): Promise<QuizSession[]> {
-  const db = await read();
-  return db.quizSessions.filter(
-    (s) => s.quizId === db.quizControl.quizId && s.status === 'disqualified',
-  );
+  await ready();
+  return sql()<QuizSession[]>`
+    select * from quiz_sessions
+    where quiz_id = (select quiz_id from quiz_control where id = 1) and status = 'disqualified'
+    order by joined_at`;
 }
 
 export async function reinstate(sessionId: string, actor: Actor): Promise<void> {
-  await mutate((db) => {
-    const session = db.quizSessions.find((s) => s.id === sessionId);
+  await ready();
+  await tx(async (t) => {
+    const [session] = await t<QuizSession[]>`select * from quiz_sessions where id = ${sessionId} for update`;
     if (!session || session.status !== 'disqualified') throw new UserError('Nothing to reinstate.');
     session.status = session.answers.length >= session.questionOrder.length ? 'finished' : 'active';
     session.dqReason = null;
     session.lastHeartbeatAt = now();
-    writeAudit(db, actor, 'quiz.reinstate', 'quiz_sessions', sessionId, session.rollNo);
+    await saveSession(t, session);
+    await writeAudit(t, actor, 'quiz.reinstate', 'quiz_sessions', sessionId, session.rollNo);
+    await bump(t);
   });
 }
 
 /** Answer key shown to a player after the quiz ends (if the admin allows it). No points, no tally. */
 export async function resultsFor(token: string | undefined) {
-  const db = await read();
-  const session = findSession(db, token);
-  const quiz = db.quizzes.find((q) => q.id === session?.quizId);
-  if (!session || !quiz || db.quizControl.phase !== 'ended' || !quiz.settings.revealAfterEnd)
-    return null;
+  await ready();
+  const s = sql();
+  const session = await findSession(s, token);
+  const quiz = await quizById(s, session?.quizId);
+  const c = await control(s);
+  if (!session || !quiz || c.phase !== 'ended' || !quiz.settings.revealAfterEnd) return null;
   return session.questionOrder.map((qid) => {
     const q = quiz.questions.find((x) => x.id === qid)!;
     return {
@@ -613,21 +701,13 @@ export async function resultsFor(token: string | undefined) {
 }
 
 export async function exportQuizCsv(quizId: string): Promise<string> {
-  const db = await read();
-  const ranked = new Map(rankSessions(db, quizId).map((r) => [r.id, r.rank]));
+  await ready();
+  const sessions = await boardSessions(sql(), quizId);
+  const ranked = new Map(rank(sessions).map((r) => [r.id, r.rank]));
   const lines = ['rank,roll_number,department,score,correct,total_time_ms,status'];
-  for (const s of db.quizSessions.filter((x) => x.quizId === quizId)) {
-    const totalMs = s.answers.reduce((sum, a) => sum + a.ms, 0);
+  for (const x of sessions) {
     lines.push(
-      [
-        ranked.get(s.id) ?? '',
-        s.rollNo,
-        s.department,
-        s.score,
-        s.correctCount,
-        totalMs,
-        s.status,
-      ].join(','),
+      [ranked.get(x.id) ?? '', x.rollNo, x.department, x.score, x.correctCount, x.totalMs, x.status].join(','),
     );
   }
   return lines.join('\n');
