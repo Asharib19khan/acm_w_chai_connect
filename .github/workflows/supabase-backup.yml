@@ -39,7 +39,8 @@ jobs:
           supabase db dump --db-url "$SUPABASE_DB_URL" -f schema.sql
           supabase db dump --db-url "$SUPABASE_DB_URL" -f data.sql --use-copy --data-only
           tar czf backup.tgz roles.sql schema.sql data.sql
-          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+          # Passphrase via a file descriptor: a value starting with "-" must never look like an option.
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 3<<< "$BACKUP_PASSPHRASE" \
             --symmetric --cipher-algo AES256 -o "chai-backup-$stamp.tgz.gpg" backup.tgz
           rm -f roles.sql schema.sql data.sql backup.tgz
       - uses: actions/upload-artifact@v4

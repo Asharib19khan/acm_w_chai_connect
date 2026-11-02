@@ -14,10 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        # The student site's live feed reads the database, which is what keeps a free project awake.
+        # (Supabase's REST root no longer answers the public key, and every table is closed to it.)
         run: |
-          if [ -z "$SUPABASE_URL" ]; then echo "No SUPABASE_URL secret yet; skipping."; exit 0; fi
-          curl --fail --silent --show-error -o /dev/null \
-            -H "apikey: $SUPABASE_ANON_KEY" "$SUPABASE_URL/rest/v1/"
+          curl --fail --silent --show-error --max-time 60 -o /dev/null \
+            https://acmw-chai-connect.vercel.app/api/pulse
