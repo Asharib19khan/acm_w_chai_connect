@@ -1,5 +1,6 @@
 /** FAST Karachi programs (blueprint section 4). Editable later from admin settings. */
 export const DEPARTMENTS = [
+  { code: 'FT', name: 'Financial Technology' },
   { code: 'AF', name: 'Accounting & Finance' },
   { code: 'AI', name: 'Artificial Intelligence' },
   { code: 'BA', name: 'Business Analytics' },
@@ -9,7 +10,6 @@ export const DEPARTMENTS = [
   { code: 'CY', name: 'Cyber Security' },
   { code: 'DS', name: 'Data Science' },
   { code: 'EE', name: 'Electrical Engineering' },
-  { code: 'FT', name: 'Financial Technology' },
   { code: 'SE', name: 'Software Engineering' },
   { code: 'GRAD', name: 'Graduate (MS / PhD)' },
 ] as const;
