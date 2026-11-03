@@ -31,8 +31,11 @@ function connect(): Sql {
   const local = url.includes('127.0.0.1') || url.includes('localhost');
   return postgres(url, {
     prepare: false,
-    max: local ? 10 : 5,
-    idle_timeout: 20,
+    // Supabase's pooler allows 200 client connections in total, and Vercel runs many copies of
+    // each site under load: keep each copy to 2 connections and let idle ones go after 5 s.
+    max: local ? 10 : 2,
+    idle_timeout: local ? 20 : 5,
+    max_lifetime: 60 * 5,
     connect_timeout: 15,
     ssl: local ? false : 'require',
     onnotice: () => {},

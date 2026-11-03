@@ -226,7 +226,20 @@ function totalWindowMs(quiz: Quiz): number {
  * offline. Runs in its own short statements, never inside a player's transaction, and the sweep is
  * claimed by one server at a time, so thousands of answers never queue behind it.
  */
+const clock = globalThis as unknown as { __clockAt?: number; __clock?: Promise<void> };
+
+/** At most one clock check per server copy every 500 ms; concurrent callers share it. */
 async function advanceClock(): Promise<void> {
+  if (SWEEP_MS > 0 && clock.__clockAt && Date.now() - clock.__clockAt < 500) return clock.__clock;
+  clock.__clockAt = Date.now();
+  clock.__clock = runClock().catch((error) => {
+    clock.__clockAt = 0;
+    throw error;
+  });
+  return clock.__clock;
+}
+
+async function runClock(): Promise<void> {
   const s = sql();
   const c = await control(s);
   if (!c.quizId || !c.startsAt || (c.phase !== 'countdown' && c.phase !== 'live')) return;
@@ -411,22 +424,42 @@ export interface PlayerState {
   };
 }
 
+type SharedState = { c: ControlRow; quiz: Quiz | null; joined: number };
+const shared = globalThis as unknown as { __qsAt?: number; __qs?: Promise<SharedState> };
+
+/** The part of the quiz state that's the same for every player, shared for 800 ms per server. */
+async function sharedState(): Promise<SharedState> {
+  if (SWEEP_MS > 0 && shared.__qs && shared.__qsAt && Date.now() - shared.__qsAt < 800) return shared.__qs;
+  shared.__qsAt = Date.now();
+  shared.__qs = (async () => {
+    await advanceClock();
+    const s = sql();
+    const c = await control(s);
+    const quiz = await quizById(s, c.quizId);
+    const [n] = quiz
+      ? await s<{ n: number }[]>`select count(*)::int as n from quiz_sessions where quiz_id = ${quiz.id}`
+      : [{ n: 0 }];
+    return { c, quiz, joined: n!.n };
+  })();
+  shared.__qs.catch(() => (shared.__qsAt = 0));
+  return shared.__qs;
+}
+
 export async function playerState(token: string | undefined): Promise<PlayerState> {
   await ready();
-  await advanceClock();
-  const s = sql();
-  const c = await control(s);
-  const quiz = await quizById(s, c.quizId);
-  const session = await findSession(s, token);
-  const [n] = quiz
-    ? await s<{ n: number }[]>`select count(*)::int as n from quiz_sessions where quiz_id = ${quiz.id}`
-    : [{ n: 0 }];
+  const { c, quiz, joined } = await sharedState();
+  const session = token
+    ? ((
+        await sql()<QuizSession[]>`
+          select * from quiz_sessions where token_hash = ${tokenHash(token)} and quiz_id = ${c.quizId}`
+      )[0] ?? null)
+    : null;
   // Students never see scores or ranks (28 Oct amendment A7); those stay on the big screen.
   return {
     phase: c.phase,
     quizTitle: c.phase === 'locked' ? null : (quiz?.title ?? null),
     startsInMs: c.startsAt ? Date.parse(c.startsAt) - Date.now() : null,
-    joinedCount: n!.n,
+    joinedCount: joined,
     serverNow: Date.now(),
     me: session
       ? {
