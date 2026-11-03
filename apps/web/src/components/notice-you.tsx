@@ -209,9 +209,9 @@ export function NoticeYou() {
     // Fast scroll, bottom of the page, back to the top.
     let fastSince = 0;
     let wasAtBottom = false;
-    let raf = 0;
-    const watch = (t: number) => {
-      raf = requestAnimationFrame(watch);
+    // Checked on scroll, not every frame: nothing here can change while the page is still.
+    const watch = () => {
+      const t = performance.now();
       if (scroll.speed > 3200) {
         if (!fastSince) fastSince = t;
         else if (t - fastSince > 250) {
@@ -229,8 +229,8 @@ export function NoticeYou() {
         say('backToTop');
       }
     };
-    raf = requestAnimationFrame(watch);
-    cleanups.push(() => cancelAnimationFrame(raf));
+    addEventListener('scroll', watch, { passive: true });
+    cleanups.push(() => removeEventListener('scroll', watch));
 
     // Idle for 25 s.
     let idleTimer = 0;

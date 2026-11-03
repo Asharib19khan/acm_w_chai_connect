@@ -22,22 +22,50 @@ export function HeroTitle({ lines }: { lines: string[] }) {
     if (!el || reduce) return;
     startTilt();
     const letters = Array.from(el.querySelectorAll<HTMLSpanElement>('[data-l]'));
+    // Letter boxes in page coordinates, measured only when the layout changes, never per frame
+    // (measuring every frame forced the phone to redo layout 60 times a second).
+    let boxes: { left: number; right: number; top: number }[] = [];
+    const measure = () => {
+      boxes = letters.map((l) => {
+        const r = l.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top + scrollY + r.height * 0.12 };
+      });
+    };
+    const resize = new ResizeObserver(measure);
+    resize.observe(el);
+    const settle = setTimeout(measure, 2600); // after the letters finish dropping in
+    const pressed = letters.map(() => false);
+    let ex = '';
+    let ey = '';
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      el.style.setProperty('--ex', (-tilt.x * 1.1).toFixed(2));
-      el.style.setProperty('--ey', (1.2 - tilt.y * 0.5).toFixed(2));
-      for (const l of letters) {
-        const r = l.getBoundingClientRect();
-        const on =
-          petFeet.x > r.left &&
-          petFeet.x < r.right &&
-          Math.abs(petFeet.y - (r.top + r.height * 0.12)) < 18;
-        l.style.setProperty('--press', on ? '1' : '0');
+      const nx = (-tilt.x * 1.1).toFixed(2);
+      const ny = (1.2 - tilt.y * 0.5).toFixed(2);
+      if (nx !== ex) el.style.setProperty('--ex', (ex = nx));
+      if (ny !== ey) el.style.setProperty('--ey', (ey = ny));
+      const fy = petFeet.y + scrollY;
+      for (let i = 0; i < letters.length; i++) {
+        const b = boxes[i];
+        const on = Boolean(b && petFeet.x > b.left && petFeet.x < b.right && Math.abs(fy - b.top) < 18);
+        if (on !== pressed[i]) letters[i]!.style.setProperty('--press', (pressed[i] = on) ? '1' : '0');
       }
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    // Only animate while the title is on screen.
+    const seen = new IntersectionObserver(([e]) => {
+      cancelAnimationFrame(raf);
+      if (e?.isIntersecting) {
+        measure();
+        raf = requestAnimationFrame(tick);
+      }
+    });
+    seen.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      seen.disconnect();
+      resize.disconnect();
+      clearTimeout(settle);
+    };
   }, [reduce]);
 
   let n = 0;

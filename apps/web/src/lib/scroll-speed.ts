@@ -7,11 +7,19 @@
 export const scroll = { speed: 0, direction: 0 as -1 | 0 | 1 };
 let started = false;
 
+const wakers = new Set<() => void>();
+/** Called when scrolling starts after a quiet spell, so loops that read `scroll` can wake up. */
+export function onScrollWake(fn: () => void): () => void {
+  wakers.add(fn);
+  return () => wakers.delete(fn);
+}
+
 export function startScrollSpeed() {
   if (started || typeof window === 'undefined') return;
   started = true;
   let lastY = scrollY;
   let lastT = performance.now();
+  let running = false;
   const tick = (t: number) => {
     const dt = Math.max(1, t - lastT);
     const dy = scrollY - lastY;
@@ -22,7 +30,24 @@ export function startScrollSpeed() {
     if (dy !== 0) scroll.direction = dy > 0 ? 1 : -1;
     lastY = scrollY;
     lastT = t;
+    // Sleep once the page is still; the next scroll wakes it.
+    if (dy === 0 && scroll.speed < 1) {
+      scroll.speed = 0;
+      running = false;
+      return;
+    }
     requestAnimationFrame(tick);
   };
-  requestAnimationFrame(tick);
+  addEventListener(
+    'scroll',
+    () => {
+      if (running) return;
+      running = true;
+      lastY = scrollY;
+      lastT = performance.now();
+      requestAnimationFrame(tick);
+      wakers.forEach((w) => w());
+    },
+    { passive: true },
+  );
 }

@@ -18,12 +18,14 @@ function onOrientation(e: DeviceOrientationEvent) {
   // gamma: left/right, beta: front/back (phone held upright is about 45-60 degrees).
   target.x = Math.max(-1, Math.min(1, e.gamma / 30));
   target.y = Math.max(-1, Math.min(1, (e.beta - 50) / 30));
+  wake();
 }
 
 function onMouse(e: PointerEvent) {
   if (gyro || e.pointerType !== 'mouse') return;
   target.x = (e.clientX / innerWidth) * 2 - 1;
   target.y = (e.clientY / innerHeight) * 2 - 1;
+  wake();
 }
 
 function askPermission() {
@@ -45,10 +47,22 @@ export function startTilt() {
   if (DO && !DO.requestPermission) addEventListener('deviceorientation', onOrientation);
   if (DO?.requestPermission) addEventListener('pointerdown', askPermission, { once: true });
   addEventListener('pointermove', onMouse, { passive: true });
-  const step = () => {
-    tilt.x += (target.x - tilt.x) * 0.08;
-    tilt.y += (target.y - tilt.y) * 0.08;
-    requestAnimationFrame(step);
-  };
+  wake();
+}
+
+// The smoothing loop sleeps once the tilt has caught up and wakes on the next movement.
+let running = false;
+function step() {
+  tilt.x += (target.x - tilt.x) * 0.08;
+  tilt.y += (target.y - tilt.y) * 0.08;
+  if (Math.abs(target.x - tilt.x) < 0.002 && Math.abs(target.y - tilt.y) < 0.002) {
+    running = false;
+    return;
+  }
+  requestAnimationFrame(step);
+}
+function wake() {
+  if (running) return;
+  running = true;
   requestAnimationFrame(step);
 }

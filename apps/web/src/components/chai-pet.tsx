@@ -147,8 +147,14 @@ const karachiHour = () =>
       hour12: false,
     }).format(Date.now()),
   );
-const ledgeKey = (el: Element | null) =>
-  el ? `${el.tagName}:${(el.textContent ?? '').trim().slice(0, 24)}` : 'floor';
+// Remembered per element: reading textContent of every surface each frame was costly.
+const ledgeKeys = new WeakMap<Element, string>();
+const ledgeKey = (el: Element | null) => {
+  if (!el) return 'floor';
+  let k = ledgeKeys.get(el);
+  if (!k) ledgeKeys.set(el, (k = `${el.tagName}:${(el.textContent ?? '').trim().slice(0, 24)}`));
+  return k;
+};
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
@@ -355,10 +361,26 @@ export function ChaiPet() {
     api.current = { say };
 
     // ---------------- world ----------------
+    // Surface positions are kept in page coordinates and re-measured at most every 500 ms; in
+    // between, scrolling just shifts them. Measuring every frame forced the phone to redo the
+    // whole page layout 60 times a second (the main cause of the lag).
+    const pageRects = new Map<Element, { left: number; right: number; top: number; width: number; at: number }>();
+    const rectOf = (e: Element) => {
+      const now = performance.now();
+      let r = pageRects.get(e);
+      if (!r || now - r.at > 500) {
+        const b = e.getBoundingClientRect();
+        r = { left: b.left, right: b.right, top: b.top + scrollY, width: b.width, at: now };
+        pageRects.set(e, r);
+      }
+      return { left: r.left, right: r.right, top: r.top - scrollY, width: r.width };
+    };
+    let ledgeEls: Element[] = [];
+    let ledgeElsAt = -1e9;
     const toLedge = (e: Element | null): Ledge | null => {
       if (!e) return { el: null, left: 0, right: vw(), top: floorY(), key: 'floor' };
       if (!e.isConnected) return null;
-      const r = e.getBoundingClientRect();
+      const r = rectOf(e);
       if (r.width < 70 || r.top < 70 || r.top > vh() - 20) return null;
       return {
         el: e,
@@ -368,12 +390,20 @@ export function ChaiPet() {
         key: ledgeKey(e),
       };
     };
+    let frameLedges: Ledge[] | null = null;
     const ledges = (): Ledge[] => {
+      if (frameLedges) return frameLedges;
+      // The list of surfaces changes rarely; look it up at most every 700 ms.
+      if (performance.now() - ledgeElsAt > 700) {
+        ledgeEls = Array.from(document.querySelectorAll(LEDGE_SELECTOR));
+        ledgeElsAt = performance.now();
+      }
       const out: Ledge[] = [toLedge(null)!];
-      document.querySelectorAll(LEDGE_SELECTOR).forEach((e) => {
+      for (const e of ledgeEls) {
         const l = toLedge(e);
         if (l) out.push(l);
-      });
+      }
+      frameLedges = out;
       return out;
     };
     const kettle = () => {
@@ -977,6 +1007,12 @@ export function ChaiPet() {
     addEventListener('pointercancel', onUp);
 
     // ---------------- loop ----------------
+    // The bubble's height only changes when its text does; watch it instead of measuring per frame.
+    let bubbleH = 60;
+    const bubbleObs = new ResizeObserver(([e]) => {
+      if (e) bubbleH = (e.target as HTMLElement).offsetHeight;
+    });
+    if (bubbleRef.current) bubbleObs.observe(bubbleRef.current);
     let raf = 0;
     let last = performance.now();
     let lastFast = 0;
@@ -984,6 +1020,8 @@ export function ChaiPet() {
     let lastBalanceSay = 0;
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
+      frameLedges = null;
+      if (pageRects.size > 200) pageRects.clear();
       const dt = Math.min(0.04, (now - last) / 1000);
       last = now;
       const m = moodRef.current;
@@ -1773,7 +1811,7 @@ export function ChaiPet() {
       if (bubbleRef.current) {
         const headY = P.y - 48;
         const bx = clamp(s.x, 150, vw() - 150);
-        const bh = bubbleRef.current.offsetHeight || 60;
+        const bh = bubbleH || 60;
         const above = headY - 14 - bh > 8;
         const by = above ? headY - 14 - bh : P.y + 22;
         bubbleRef.current.style.transform = `translate3d(${(bx - 140).toFixed(1)}px, ${by.toFixed(1)}px, 0)`;
@@ -1788,6 +1826,7 @@ export function ChaiPet() {
     raf = requestAnimationFrame(frame);
 
     return () => {
+      bubbleObs.disconnect();
       cancelAnimationFrame(raf);
       saveMemory(mem);
       petFeet.kicking = false;

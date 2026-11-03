@@ -463,3 +463,26 @@ html.cc-dark main [role='radio'][aria-checked='true'] .text-fg,
 html.cc-dark main [role='radio'][aria-checked='true'] .text-fg-muted {
   color: #000;
 }
+
+/* Night tint fades in over 3 s when it appears (night-shade.tsx). */
+.cc-night-shade {
+  animation: cc-night-in 3s ease both;
+}
+@keyframes cc-night-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Intro tapes: the printed words run along the tape (transform only, cheap on phones). */
+.cc-tape-run {
+  animation: cc-tape 9s linear infinite;
+}
+.cc-tape-run-rev {
+  animation-direction: reverse;
+}
+@keyframes cc-tape {
+  to {
+    transform: translateX(-50%);
+  }
+}

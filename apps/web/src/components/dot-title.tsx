@@ -73,11 +73,20 @@ export function DotTitle({ lines, label }: { lines: string[]; label: string }) {
       dots = new Float32Array(pts);
     };
 
+    // Skip redrawing once every dot is home and nothing is pushing them: same picture, no work.
+    let settled = false;
+    let lastTx = NaN;
+    let lastTy = NaN;
     const frame = () => {
       raf = requestAnimationFrame(frame);
       if (!visible) return;
+      const tiltMoved = Math.abs(tilt.x - lastTx) > 0.001 || Math.abs(tilt.y - lastTy) > 0.001;
+      if (settled && !tiltMoved && !pointer.active && !petFeet.kicking) return;
+      lastTx = tilt.x;
+      lastTy = tilt.y;
       ctx.clearRect(0, 0, w, h);
-      const canvasRect = canvas.getBoundingClientRect();
+      const canvasRect = petFeet.kicking ? canvas.getBoundingClientRect() : null;
+      let maxV = 0;
       const reach = Math.max(70, w * 0.11);
       const reach2 = reach * reach;
       for (let i = 0; i < dots.length; i += 6) {
@@ -90,7 +99,7 @@ export function DotTitle({ lines, label }: { lines: string[]; label: string }) {
         vx += (dots[i]! + tilt.x * depth - x) * 0.055;
         vy += (dots[i + 1]! + tilt.y * depth - y) * 0.055;
         // The pet's feet kick dots too (canvas-local coordinates).
-        if (petFeet.kicking) {
+        if (canvasRect) {
           const r = canvasRect;
           const px = petFeet.x - r.left;
           const py = petFeet.y - r.top;
@@ -123,9 +132,16 @@ export function DotTitle({ lines, label }: { lines: string[]; label: string }) {
         dots[i + 3] = y;
         dots[i + 4] = vx;
         dots[i + 5] = vy;
-        ctx.fillStyle = (i / 6) % 9 === 0 ? '#000000' : '#ff4fd8';
-        ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        maxV = Math.max(maxV, Math.abs(vx), Math.abs(vy));
       }
+      // Two passes, one colour each: switching fillStyle per dot is slow on phones.
+      const size = radius * 2;
+      ctx.fillStyle = '#ff4fd8';
+      for (let i = 0; i < dots.length; i += 6)
+        if ((i / 6) % 9 !== 0) ctx.fillRect(dots[i + 2]! - radius, dots[i + 3]! - radius, size, size);
+      ctx.fillStyle = '#000000';
+      for (let i = 0; i < dots.length; i += 54) ctx.fillRect(dots[i + 2]! - radius, dots[i + 3]! - radius, size, size);
+      settled = maxV < 0.01;
     };
 
     const move = (e: PointerEvent) => {

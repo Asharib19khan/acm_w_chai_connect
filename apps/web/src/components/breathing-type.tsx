@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { scroll, startScrollSpeed } from '@/lib/scroll-speed';
+import { onScrollWake, scroll, startScrollSpeed } from '@/lib/scroll-speed';
 
 /**
  * Headings breathe with you: at rest they sit a little lighter; scroll and they swell to full
@@ -15,6 +15,8 @@ export function BreathingType() {
     const root = document.documentElement;
     let wght = 640;
     let skew = 0;
+    let shownW = '';
+    let shownS = '';
     let raf = 0;
     const tick = () => {
       // 0 at rest, 1 at a fast flick (~2500 px/s).
@@ -23,12 +25,26 @@ export function BreathingType() {
       const targetS = -scroll.direction * t * 6;
       wght += (targetW - wght) * 0.12;
       skew += (targetS - skew) * 0.12;
-      root.style.setProperty('--cc-wght', wght.toFixed(0));
-      root.style.setProperty('--cc-skew', `${skew.toFixed(2)}deg`);
+      // Write only real changes: every write restyles the whole page.
+      const w = String(Math.round(wght / 10) * 10);
+      const k = `${skew.toFixed(1)}deg`;
+      if (w !== shownW) root.style.setProperty('--cc-wght', (shownW = w));
+      if (k !== shownS) root.style.setProperty('--cc-skew', (shownS = k));
+      // Settled at rest: sleep until the next scroll.
+      if (scroll.speed === 0 && Math.abs(wght - 640) < 5 && Math.abs(skew) < 0.05) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const wake = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    const stop = onScrollWake(wake);
+    return () => {
+      stop();
+      cancelAnimationFrame(raf);
+    };
   }, []);
   return null;
 }

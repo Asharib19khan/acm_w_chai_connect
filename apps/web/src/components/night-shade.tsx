@@ -48,12 +48,13 @@ export function NightShade() {
     return () => clearTimeout(id);
   }, [night]);
 
+  // Only in the DOM at night: a full-screen blend layer costs a repaint every frame even when clear.
+  if (!night) return null;
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-[71] transition-opacity duration-[3000ms]"
+      className="cc-night-shade pointer-events-none fixed inset-0 z-[71]"
       style={{
-        opacity: night ? 1 : 0,
         background:
           'radial-gradient(ellipse at 50% 30%, rgb(255 170 90 / 0.10), rgb(60 20 40 / 0.28))',
         mixBlendMode: 'multiply',

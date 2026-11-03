@@ -3,7 +3,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { Scramble } from './scramble';
 
 const SEEN_KEY = 'cc_intro_seen';
 
@@ -15,9 +14,11 @@ export function useIntroDone() {
 }
 
 /**
- * Startup animation, once per browser session: the name decrypts on black, a hairline draws
- * across, and the screen splits open. Tap anywhere to skip. Skipped entirely on the quiz page
- * and under prefers-reduced-motion. The overlay is in the server HTML, so the page never flashes
+ * Startup animation, once per browser session: "Ek chai!", the order you shout at a Karachi
+ * dhaba. Tape slaps across, EK and CHAI slam down, a date sticker stamps on, a CONNECT tape
+ * runs the other way, then everything is ripped off to open the site. Tap anywhere to skip.
+ * Skipped on the quiz page and under prefers-reduced-motion. Only transforms and opacity move,
+ * so it stays smooth on phones. The overlay is in the server HTML, so the page never flashes
  * underneath it first.
  */
 export function IntroGate({ children }: { children: ReactNode }) {
@@ -50,7 +51,7 @@ export function IntroGate({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    const id = setTimeout(() => setPhase('done'), 2200);
+    const id = setTimeout(() => setPhase('done'), 2400);
     return () => clearTimeout(id);
   }, [phase]);
 
@@ -66,21 +67,15 @@ export function IntroGate({ children }: { children: ReactNode }) {
             onClick={() => setPhase('done')}
             aria-hidden
           >
-            {/* Two black halves that split apart to open the site. */}
-            {(['top', 'bottom'] as const).map((side) => (
-              <motion.div
-                key={side}
-                className={`bg-canvas absolute inset-x-0 h-1/2 ${side === 'top' ? 'top-0' : 'bottom-0'}`}
-                exit={
-                  skipped
-                    ? undefined
-                    : {
-                        y: side === 'top' ? '-100%' : '100%',
-                        transition: { duration: 0.85, ease: [0.76, 0, 0.24, 1] },
-                      }
-                }
-              />
-            ))}
+            {/* The paper the order is stuck to: ripped upward last, opening the site. */}
+            <motion.div
+              className="bg-canvas absolute inset-0"
+              exit={
+                skipped
+                  ? undefined
+                  : { y: '-100%', transition: { duration: 0.6, delay: 0.22, ease: [0.76, 0, 0.24, 1] } }
+              }
+            />
             {phase === 'play' && <IntroArt />}
           </motion.div>
         )}
@@ -89,41 +84,99 @@ export function IntroGate({ children }: { children: ReactNode }) {
   );
 }
 
-function IntroArt() {
+const SLAM = { type: 'spring', stiffness: 700, damping: 26, mass: 0.9 } as const;
+const RIP = { duration: 0.55, ease: [0.55, 0, 0.9, 0.4] } as const;
+
+function Tape({
+  text,
+  className,
+  rotate,
+  delay,
+  from,
+  exitRotate,
+  reverse = false,
+}: {
+  text: string;
+  className: string;
+  rotate: number;
+  delay: number;
+  from: 'left' | 'right';
+  exitRotate: number;
+  reverse?: boolean;
+}) {
+  const run = Array.from({ length: 8 }, () => text).join('  •  ');
   return (
     <motion.div
-      className="absolute inset-0 grid place-items-center px-4"
-      exit={{ opacity: 0, scale: 1.08, transition: { duration: 0.35 } }}
+      className={`absolute -inset-x-[15%] flex h-[clamp(2.6rem,11vw,4.5rem)] items-center overflow-hidden shadow-[0_6px_0_rgb(0_0_0/0.18)] ${className}`}
+      style={{ rotate, transformOrigin: from === 'left' ? '0% 50%' : '100% 50%' }}
+      initial={{ scaleX: 0 }}
+      animate={{ scaleX: 1 }}
+      transition={{ duration: 0.22, delay, ease: [0.2, 0.9, 0.3, 1.2] }}
+      exit={{ y: '-130vh', rotate: exitRotate, transition: RIP }}
     >
-      <div className="flex w-full max-w-5xl flex-col items-start">
-        <Scramble
-          text="CHAI CONNECT"
-          duration={1100}
-          className="font-display text-fg text-[clamp(2.6rem,11.5vw,9rem)] leading-[0.9] font-black tracking-[-0.05em]"
-        />
-        <motion.div
-          className="bg-accent mt-5 h-2 w-full origin-left"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 1.5, delay: 0.25, ease: [0.65, 0, 0.35, 1] }}
-        />
-        <div className="text-accent mt-4 flex w-full justify-between font-mono text-[0.7rem] tracking-[0.3em] uppercase sm:text-xs">
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-          >
-            ACM-W
-          </motion.span>
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
-          >
-            27.11.2026
-          </motion.span>
-        </div>
+      <div
+        className={`cc-tape-run font-mono text-[clamp(0.8rem,3.4vw,1.15rem)] font-bold tracking-[0.25em] whitespace-nowrap uppercase ${reverse ? 'cc-tape-run-rev' : ''}`}
+      >
+        {run} • {run}
       </div>
+    </motion.div>
+  );
+}
+
+function IntroArt() {
+  return (
+    <motion.div className="absolute inset-0 overflow-hidden" exit={{ transition: { duration: 0.8 } }}>
+      <Tape
+        text="ACM-W presents"
+        className="bg-accent text-on-accent top-[17%]"
+        rotate={-7}
+        delay={0.05}
+        from="left"
+        exitRotate={-28}
+      />
+
+      <div className="font-hero absolute inset-x-0 top-1/2 -translate-y-1/2 px-[6vw] leading-[0.8] font-extrabold tracking-[-0.06em] uppercase">
+        <motion.div
+          className="text-fg w-fit text-[clamp(8rem,60vw,26rem)]"
+          initial={{ scale: 2.6, rotate: -14, opacity: 0 }}
+          animate={{ scale: 1, rotate: -4, opacity: 1 }}
+          transition={{ ...SLAM, delay: 0.32 }}
+          exit={{ y: '120vh', rotate: -30, transition: { ...RIP, delay: 0.05 } }}
+        >
+          Ek
+        </motion.div>
+        <motion.div
+          className="text-accent -mt-[4vw] ml-[1vw] w-fit text-[clamp(5rem,33vw,17rem)] [text-shadow:0.06em_0.06em_0_#000]"
+          initial={{ scale: 2.6, rotate: 12, opacity: 0 }}
+          animate={{ scale: 1, rotate: 3, opacity: 1 }}
+          transition={{ ...SLAM, delay: 0.62 }}
+          exit={{ y: '120vh', rotate: 24, transition: { ...RIP, delay: 0.1 } }}
+        >
+          Chai!
+        </motion.div>
+      </div>
+
+      {/* Date sticker, stamped on at an angle. */}
+      <motion.div
+        className="bg-fg text-accent absolute top-[24%] right-[7vw] grid size-[clamp(5.5rem,24vw,9rem)] place-items-center rounded-full text-center font-mono leading-tight font-bold shadow-[0_5px_0_var(--cc-brand)]"
+        initial={{ scale: 0, rotate: -40 }}
+        animate={{ scale: 1, rotate: 14 }}
+        transition={{ type: 'spring', stiffness: 520, damping: 14, delay: 0.98 }}
+        exit={{ y: '-120vh', rotate: 90, transition: RIP }}
+      >
+        <span className="text-[clamp(1.2rem,5.6vw,2.2rem)] tracking-tight">27.11</span>
+        <span className="-mt-3 text-[clamp(0.5rem,2.1vw,0.75rem)] tracking-[0.3em] text-white">FAST·KHI</span>
+      </motion.div>
+
+      <Tape
+        text="Connect"
+        className="bg-fg text-accent bottom-[15%]"
+        rotate={6}
+        delay={1.2}
+        from="right"
+        exitRotate={22}
+        reverse
+      />
     </motion.div>
   );
 }
