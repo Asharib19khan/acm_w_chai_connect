@@ -21,8 +21,7 @@ export default async function AskPage({
   return (
     <PageShell>
       <PageIntro title="Ask a question">
-        Ask what you’d never ask out loud. Approved questions go up on the auditorium screen for the
-        panel.
+        Ask what you’d never ask out loud.
       </PageIntro>
       {settings.switches.questions ? (
         <AskForm alreadyAsked={asked} src={spot} />
