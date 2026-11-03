@@ -6,7 +6,6 @@ import { BreathingType } from '@/components/breathing-type';
 import { ChaiPet } from '@/components/chai-pet';
 import { GamesNight } from '@/components/games-night';
 import { JoinToasts } from '@/components/join-toasts';
-import { LiveReaders } from '@/components/live-readers';
 import { NightShade } from '@/components/night-shade';
 import { NoticeYou } from '@/components/notice-you';
 import { SoundWiring } from '@/components/sound-wiring';
@@ -52,7 +51,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <NoticeYou />
             <GamesNight />
             <ChaiPet />
-            <LiveReaders />
             <NightShade />
             <BreathingType />
             <SoundWiring />
