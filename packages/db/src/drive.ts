@@ -18,6 +18,44 @@ export function driveConfigured(): boolean {
   return Boolean(e.id && e.secret && e.refresh && e.folder);
 }
 
+/** Signed in to Drive at all (CVs need a folder too; reading moments does not). */
+export function driveSignedIn(): boolean {
+  const e = env();
+  return Boolean(e.id && e.secret && e.refresh);
+}
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+  md5Checksum?: string;
+  createdTime: string;
+  appProperties?: Record<string, string>;
+}
+
+/** Every file matching a Drive query (follows pages). */
+export async function driveList(query: string): Promise<DriveFile[]> {
+  const out: DriveFile[] = [];
+  let page: string | undefined;
+  do {
+    const url = new URL('https://www.googleapis.com/drive/v3/files');
+    url.searchParams.set('q', query);
+    url.searchParams.set('pageSize', '1000');
+    url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType,size,md5Checksum,createdTime,appProperties)');
+    if (page) url.searchParams.set('pageToken', page);
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${await accessToken()}` },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`Drive list ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const data = (await res.json()) as { files: DriveFile[]; nextPageToken?: string };
+    out.push(...data.files);
+    page = data.nextPageToken;
+  } while (page);
+  return out;
+}
+
 let cached: { token: string; expiresAt: number } | null = null;
 
 async function accessToken(): Promise<string> {

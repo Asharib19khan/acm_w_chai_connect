@@ -7,6 +7,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const file = await readMomentOriginal(id);
   if (!file) return new Response('Not found', { status: 404 });
+  // Too big for Vercel to send (videos up to 2 GB): open it in Drive instead.
+  if ('driveUrl' in file) return Response.redirect(file.driveUrl, 302);
   const safeType = /^(image\/(jpeg|png|webp|gif|heic|heif|avif)|video\/(mp4|quicktime|webm|3gpp))$/.test(file.moment.mime)
     ? file.moment.mime
     : 'application/octet-stream';

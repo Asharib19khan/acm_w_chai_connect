@@ -21,6 +21,10 @@ export const env = checkEnv(
       GOOGLE_DRIVE_REFRESH_TOKEN: secret,
       CV_FOLDER_ID: secret,
       SUPERADMIN_EMAIL: z.email(),
+      /** Share the moment's Drive folders, so admins can review what was shared. */
+      MOMENTS_FOLDER_ROOT: secret,
+      MOMENTS_FOLDER_PHOTOS: secret,
+      MOMENTS_FOLDER_VIDEOS: secret,
     },
     client: {
       NEXT_PUBLIC_STUDENT_SITE_URL: z.url(),

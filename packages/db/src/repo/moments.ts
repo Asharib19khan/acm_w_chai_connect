@@ -11,6 +11,7 @@ import {
   writeSync,
 } from 'node:fs';
 import { newId } from '../crypto';
+import { driveDownload, driveList, driveSignedIn } from '../drive';
 import { sql, tx } from '../sql';
 import { bump, filePath, now, ready, UserError } from '../store';
 import { getSettings } from './settings';
@@ -159,8 +160,88 @@ export async function completeMoment(
   return { ok: true };
 }
 
+/*
+ * Share the moment uploads straight to Drive (no database there). The admin portal mirrors those
+ * files into the moments table so the usual review (approve / remove / restore) works. Runs at most
+ * every 30 s per server; new files appear as "scanned" and wait for an admin.
+ */
+const g = globalThis as unknown as { __momentsSyncAt?: number; __momentsSync?: Promise<void> };
+/** Drive query strings quote values with single quotes; escape them. */
+const q = (v: string) => `'${v.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+
+async function syncFromDrive(): Promise<void> {
+  const root = process.env.MOMENTS_FOLDER_ROOT;
+  const folders = [process.env.MOMENTS_FOLDER_PHOTOS, process.env.MOMENTS_FOLDER_VIDEOS].filter(
+    (f): f is string => Boolean(f),
+  );
+  if (!driveSignedIn() || !root || folders.length === 0) return;
+  const files = await driveList(
+    `(${folders.map((f) => `${q(f)} in parents`).join(' or ')}) and trashed = false`,
+  );
+  const coverFolders = await driveList(
+    `name = 'covers' and ${q(root)} in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+  );
+  const covers = coverFolders[0]
+    ? await driveList(`${q(coverFolders[0].id)} in parents and trashed = false`)
+    : [];
+  const coverFor = new Map(covers.map((c) => [c.appProperties?.for ?? '', c.id]));
+  const rows: Moment[] = files.map((f) => {
+    const p = f.appProperties ?? {};
+    const cover = coverFor.get(f.id);
+    return {
+      id: `drv_${f.id}`,
+      batchId: p.batch ?? '',
+      uploaderName: p.uploader ?? 'Anonymous',
+      title: null,
+      fileName: f.name.slice(0, 200),
+      mime: f.mimeType,
+      sizeBytes: Number(f.size ?? 0),
+      md5: f.md5Checksum ?? p.md5 ?? '',
+      fileKey: `drive:${f.id}`,
+      coverKey: cover ? `drive:${cover}` : null,
+      uploadState: 'complete',
+      receivedBytes: Number(f.size ?? 0),
+      deviceHash: p.device ?? '',
+      createdAt: f.createdTime,
+      status: 'scanned',
+      flag: cover ? 'green' : 'red',
+      flagReasons: cover ? [] : ['No preview yet; open the original in Drive.'],
+      flagCategories: cover ? [] : ['other'],
+      flagSource: 'rules',
+      reviewedBy: null,
+      reviewedAt: null,
+      removedReason: null,
+    };
+  });
+  if (rows.length === 0) return;
+  await tx(async (t) => {
+    for (let i = 0; i < rows.length; i += 200) {
+      // New files go in; known ones only pick up a cover that arrived later. Reviews are kept.
+      await t`
+        insert into moments ${t(rows.slice(i, i + 200) as never)}
+        on conflict (id) do update set
+          cover_key = coalesce(moments.cover_key, excluded.cover_key),
+          flag = case when moments.cover_key is null and excluded.cover_key is not null
+                      then 'green' else moments.flag end,
+          flag_reasons = case when moments.cover_key is null and excluded.cover_key is not null
+                              then '{}'::text[] else moments.flag_reasons end`;
+    }
+    await bump(t);
+  });
+}
+
+export async function syncMoments(force = false): Promise<void> {
+  if (!force && g.__momentsSyncAt && Date.now() - g.__momentsSyncAt < 30_000) return;
+  g.__momentsSyncAt = Date.now();
+  g.__momentsSync ??= syncFromDrive()
+    .catch((error) => console.error('moments sync failed', error))
+    .finally(() => (g.__momentsSync = undefined));
+  await g.__momentsSync;
+}
+
 export async function listMoments(): Promise<Moment[]> {
   await ready();
+  await syncMoments();
   return sql()<Moment[]>`
     select * from moments where upload_state = 'complete' order by created_at desc`;
 }
@@ -168,13 +249,22 @@ export async function listMoments(): Promise<Moment[]> {
 export async function readCover(id: string): Promise<Buffer | null> {
   const moment = await find(id);
   if (!moment?.coverKey) return null;
-  return readFileSync(filePath('covers', moment.coverKey));
+  return moment.coverKey.startsWith('drive:')
+    ? driveDownload(moment.coverKey.slice(6))
+    : readFileSync(filePath('covers', moment.coverKey));
 }
 
+/** Small originals come back as bytes; big ones (Vercel can't send > 4.5 MB) as a Drive link. */
 export async function readMomentOriginal(
   id: string,
-): Promise<{ moment: Moment; bytes: Buffer } | null> {
+): Promise<{ moment: Moment; bytes: Buffer } | { moment: Moment; driveUrl: string } | null> {
   const moment = await find(id);
   if (!moment) return null;
+  if (moment.fileKey.startsWith('drive:')) {
+    const fileId = moment.fileKey.slice(6);
+    if (moment.sizeBytes > 4_000_000)
+      return { moment, driveUrl: `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view` };
+    return { moment, bytes: await driveDownload(fileId) };
+  }
   return { moment, bytes: readFileSync(filePath('moments', moment.fileKey)) };
 }
