@@ -1,6 +1,7 @@
 import 'server-only';
 import { randomInt } from 'node:crypto';
 import { quizPoints, rankQuiz, type DepartmentCode } from '@chai/core';
+import { dbEnv } from '../env';
 import { hmac, newId, randomToken, serverKey } from '../crypto';
 import { isUnique, sql, tx, type Tx } from '../sql';
 import { bump, now, ready, UserError } from '../store';
@@ -20,7 +21,7 @@ type Actor = { id: string; name: string };
 const ANSWER_GRACE_MS = 1500;
 const COUNTDOWN_MS = 5000;
 /** The offline sweep runs at most this often, across every server instance. */
-const SWEEP_MS = Number(process.env.QUIZ_SWEEP_MS ?? 1500);
+const SWEEP_MS = Number(dbEnv.QUIZ_SWEEP_MS ?? 1500);
 
 const DEFAULT_SETTINGS: QuizSettings = {
   shuffleQuestions: true,

@@ -11,6 +11,7 @@ import {
   writeSync,
 } from 'node:fs';
 import { newId } from '../crypto';
+import { dbEnv } from '../env';
 import { driveDownload, driveList, driveSignedIn } from '../drive';
 import { sql, tx } from '../sql';
 import { bump, filePath, now, ready, UserError } from '../store';
@@ -170,8 +171,8 @@ const g = globalThis as unknown as { __momentsSyncAt?: number; __momentsSync?: P
 const q = (v: string) => `'${v.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 
 async function syncFromDrive(): Promise<void> {
-  const root = process.env.MOMENTS_FOLDER_ROOT;
-  const folders = [process.env.MOMENTS_FOLDER_PHOTOS, process.env.MOMENTS_FOLDER_VIDEOS].filter(
+  const root = dbEnv.MOMENTS_FOLDER_ROOT;
+  const folders = [dbEnv.MOMENTS_FOLDER_PHOTOS, dbEnv.MOMENTS_FOLDER_VIDEOS].filter(
     (f): f is string => Boolean(f),
   );
   if (!driveSignedIn() || !root || folders.length === 0) return;

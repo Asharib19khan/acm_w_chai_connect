@@ -1,5 +1,6 @@
 import 'server-only';
 import postgres from 'postgres';
+import { dbEnv } from './env';
 
 /*
  * The one Postgres connection for the server. Production: Supabase through its transaction pooler
@@ -23,8 +24,8 @@ export function isoFromPg(v: string): string {
 }
 
 function connect(): Sql {
-  const url = process.env.DATABASE_URL ?? LOCAL_DATABASE_URL;
-  if (!process.env.DATABASE_URL && process.env.NODE_ENV === 'production' && process.env.VERCEL) {
+  const url = dbEnv.DATABASE_URL ?? LOCAL_DATABASE_URL;
+  if (!dbEnv.DATABASE_URL && dbEnv.isProduction && dbEnv.onVercel) {
     throw new Error('DATABASE_URL is not set.');
   }
   const local = url.includes('127.0.0.1') || url.includes('localhost');

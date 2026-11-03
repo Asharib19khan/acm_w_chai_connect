@@ -1,4 +1,5 @@
 import 'server-only';
+import { dbEnv } from './env';
 
 /*
  * CV PDFs go to the organiser's Google Drive (folder CV_FOLDER_ID), uploaded by our server with
@@ -7,10 +8,10 @@ import 'server-only';
  */
 
 const env = () => ({
-  id: process.env.GOOGLE_OAUTH_CLIENT_ID,
-  secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-  refresh: process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
-  folder: process.env.CV_FOLDER_ID,
+  id: dbEnv.GOOGLE_OAUTH_CLIENT_ID,
+  secret: dbEnv.GOOGLE_OAUTH_CLIENT_SECRET,
+  refresh: dbEnv.GOOGLE_DRIVE_REFRESH_TOKEN,
+  folder: dbEnv.CV_FOLDER_ID,
 });
 
 export function driveConfigured(): boolean {
